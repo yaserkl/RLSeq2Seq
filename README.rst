@@ -8,7 +8,7 @@ Easy-TensorFlow
 .. image:: https://img.shields.io/badge/Made%20with-Python-1f425f.svg
       :target: https://www.python.org/
 .. image:: https://img.shields.io/pypi/l/ansicolortags.svg
-      :target: https://pypi.python.org/pypi/ansicolortags/
+      :target: https://github.com/yaserkl/RLSeq2Seq/blob/master/LICENSE.txt
 .. image:: https://img.shields.io/github/contributors/Naereen/StrapDown.js.svg
       :target: https://github.com/yaserkl/RLSeq2Seq/graphs/contributors
 .. image:: https://img.shields.io/github/issues/Naereen/StrapDown.js.svg

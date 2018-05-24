@@ -51,9 +51,8 @@ The main pre-processing that we do on this dataset is the following:
 
 1. Use [Spacy](http://spacy.io/) to tokenize and process the articles and its highlights.
 2. We first sentence tokenize each article and then use word tokenization and re-join everything to get the full sentence.
-3. Each article (highlight, headline) has the following format:
-    "<d> <s> first sentence ... </s> <s> second sentence ... </s> </d>"
-    Each sentences is terminated by an "EOS" token rather than "."
+3. Each sentences is terminated by an "EOS" token rather than "." and each article (highlight, headline) has the following format:
+   "<d> <s> first sentence ... </s> <s> second sentence ... </s> </d>".
 4. Replacing all Named-Entities with "_" delimited version of them. For instance, given "Virgini Tech", we get "virginia_tech"
 5. Collect POS tag and Named-Entities of each token in the text and store them in a separate file.
 

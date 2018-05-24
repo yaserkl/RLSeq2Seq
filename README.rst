@@ -65,7 +65,7 @@ Python requirements can be installed as follows:
 
 .. code:: bash
 
-    pip install -r requirements.txt
+    pip install -r python_requirements.txt
 
 ~~~~~~~~~~~~~~~~~~~
 TensorFlow

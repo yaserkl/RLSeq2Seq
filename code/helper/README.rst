@@ -55,7 +55,8 @@ Pre-process the data
 
 The main pre-processing that we do on this dataset is the following:
 
-1. Use [Spacy](http://spacy.io/) to tokenize and process the articles and its highlights.
+1. Use `Spacy 
+<http://spacy.io/>`_ to tokenize and process the articles and its highlights.
 2. We first sentence tokenize each article and then use word tokenization and re-join everything to get the full sentence.
 3. Each sentences is terminated by an "EOS" token rather than "." and each article (highlight, headline) has the following format:
    "<d> <s> first sentence ... </s> <s> second sentence ... </s> </d>".

@@ -72,7 +72,7 @@ tf.app.flags.DEFINE_integer('gpu_num', 0, 'which gpu to use to train the model')
 # Pointer-generator or baseline model
 tf.app.flags.DEFINE_boolean('pointer_gen', True, 'If True, use pointer-generator model. If False, use baseline model.')
 
-# Pointer-generator with RL
+# Pointer-generator with Self-Critic policy gradient: https://arxiv.org/pdf/1705.04304.pdf
 tf.app.flags.DEFINE_boolean('rl_training', False, 'Use policy-gradient training by collecting rewards at the end of sequence.')
 tf.app.flags.DEFINE_boolean('convert_to_reinforce_model', False, 'Convert a pointer model to a reinforce model. Turn this on and run in train mode. Your current training model will be copied to a new version (same name with _cov_init appended) that will be ready to run with coverage flag turned on, for the coverage training stage.')
 tf.app.flags.DEFINE_boolean('intradecoder', False, 'Use intradecoder attention or not')
@@ -88,13 +88,13 @@ tf.app.flags.DEFINE_string('reward_function', 'rouge_l/f_score', 'either bleu or
 tf.app.flags.DEFINE_boolean('ac_training', False, 'Use Actor-Critic learning by DDQN.')
 tf.app.flags.DEFINE_boolean('dqn_scheduled_sampling', False, 'whether to use scheduled sampling to use estimates of dqn model vs the actual q-estimates values')
 tf.app.flags.DEFINE_string('dqn_layers', '512,256,128', 'DQN dense hidden layer size, will create three dense layers with 512, 256, and 128 size')
-tf.app.flags.DEFINE_integer('dqn_replay_buffer_size', 50000, 'size of the replay buffer')
+tf.app.flags.DEFINE_integer('dqn_replay_buffer_size', 100000, 'size of the replay buffer')
 tf.app.flags.DEFINE_integer('dqn_batch_size', 100, 'batch_size for training the dqn model')
 tf.app.flags.DEFINE_integer('dqn_target_update', 10000, 'update target every 10000 steps')
 tf.app.flags.DEFINE_integer('dqn_sleep_time', 2, 'train DQN model every 2 seconds')
 tf.app.flags.DEFINE_integer('dqn_gpu_num', 0, 'gpu number to train the DDQN')
 tf.app.flags.DEFINE_boolean('dueling_net', True, 'whether to use duelling network to train the model') # https://arxiv.org/pdf/1511.06581.pdf
-tf.app.flags.DEFINE_boolean('dqn_polyak_averaging', True, 'whether to use polyak averaging to update the target network parameters') # https://arxiv.org/pdf/1511.06581.pdf
+tf.app.flags.DEFINE_boolean('dqn_polyak_averaging', True, 'whether to use polyak averaging to update the target network parameters')
 tf.app.flags.DEFINE_boolean('calculate_true_q', True, "whether to use true Q-values to train DQN or use DQN's estimates to train it")
 tf.app.flags.DEFINE_boolean('dqn_pretrain', False, "Pretrain the DDQN network with fixed Actor model")
 
@@ -107,12 +107,12 @@ tf.app.flags.DEFINE_boolean('dqn_pretrain', False, "Pretrain the DDQN network wi
 # Using sampling_probability=1.0 is equivalent to doing inference by only relying on the sampled token generated at each decoding step
 tf.app.flags.DEFINE_boolean('scheduled_sampling', False, 'whether to do scheduled sampling or not')
 tf.app.flags.DEFINE_string('decay_function', 'linear','linear, exponential, inv_sigmoid') #### TODO: implement this
-tf.app.flags.DEFINE_float('sampling_probability', 0, 'epsilon value for flipping the coin')  #### TODO: implement this
+tf.app.flags.DEFINE_float('sampling_probability', 0, 'epsilon value for flipping the coin')
 tf.app.flags.DEFINE_boolean('fixed_sampling_probability', False, 'use fixed sampling probability or adaptive based on global step')
 tf.app.flags.DEFINE_boolean('E2EBackProp', False, 'Whether to use E2EBackProp algorithm to solve exposure bias')
 tf.app.flags.DEFINE_float('alpha', 1, 'soft argmax argument')
 tf.app.flags.DEFINE_boolean('hard_argmax', True, 'whether to use soft argmax or hard argmax')
-tf.app.flags.DEFINE_boolean('greedy_scheduled_sampling', False, 'whether to use greedy approach or sample for the output')
+tf.app.flags.DEFINE_boolean('greedy_scheduled_sampling', False, 'whether to use greedy approach or sample for the output, if True it uses greedy')
 
 # Coverage hyperparameters
 tf.app.flags.DEFINE_boolean('coverage', False, 'Use coverage mechanism. Note, the experiments reported in the ACL paper train WITHOUT coverage until converged, and then train for a short phase WITH coverage afterwards. i.e. to reproduce the results in the ACL paper, turn this off for most of training then turn on for a short phase at the end.')
@@ -472,7 +472,7 @@ class Seq2Seq(object):
         tf.logging.info('DQN loss at step {}: {}'.format(self.dqn_train_step, np.mean(self.avg_dqn_loss)))
         tf.logging.info('DQN Target loss at step {}: {}'.format(self.dqn_train_step, np.mean(avg_dqn_target_loss)))
         # sleeping is required if you want the keyboard interuption to work
-        time.sleep(2)
+        time.sleep(FLAGS.dqn_sleep_time)
     except (KeyboardInterrupt, SystemExit):
       tf.logging.info("Caught keyboard interrupt on worker. Stopping supervisor...")
       self.sv.stop()

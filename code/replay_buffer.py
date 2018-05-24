@@ -13,6 +13,11 @@ except ImportError:
 
 PriorityQueue = Q.PriorityQueue
 
+
+# custom prioriy queue that is able to clear the queue once it is full
+# and cut to half. Therefore, everytime size of buffer is dqn_replay_buffer_size
+# we will keep half of the most valuable states and remove the rest to provide
+# space for new states
 class CustomQueue(PriorityQueue):
   '''
   A custom queue subclass that provides a :meth:`clear` method.

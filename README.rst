@@ -58,8 +58,23 @@ of-the-art result on CNN/Daily Mail dataset.
 ============
 DATASET
 ============
+----------------------
+CNN/Daily Mail dataset
+----------------------
+https://github.com/abisee/cnn-dailymail
 
+----------------------
+Newsroom dataset
+----------------------
+https://summari.es/
 
+We have provided helper codes to download the cnn-dailymail dataset and
+pre-process this dataset and newsroom dataset.
+Please refer to this link to access them:
+
+We saw a large improvement on the ROUGE measure by using our processed version of these datasets
+in the summarization results, therefore, we strongly suggest to use these pre-processed files for
+all the trainings.
 ---------------------------------------------------------------------------
 
 ====================

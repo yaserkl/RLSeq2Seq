@@ -3,20 +3,20 @@
 CNN-Daily Mail
 ********************
 
-============
+=========================================
 First Option: Download the processed data
-============
+=========================================
 
 @JafferWilson provided the processed data, which you can download [here](https://github.com/JafferWilson/Process-Data-of-CNN-DailyMail).
 
-============
+============================================================
 Second Option: Process dataset using @abisee code
-============
+============================================================
 Check out the pre-processing in [here](https://github.com/abisee/cnn-dailymail)
 
-============
+============================================================
 Third Option: Process dataset using our helper code
-============
+============================================================
 
 ----------------------
 Download Raw Data
@@ -26,9 +26,9 @@ Through our helper codes, we first download all the articles in both CNN and Dai
 
 As per @abisee, these files contain 114 examples for which the article text is missing, we store list of these files in the filter_data.txt file and during our pre-processing we remove them from the dataset.
 
-----------------------
+------------------------------------------------------------------
 Download article, headline, and highlights from raw data
-----------------------
+------------------------------------------------------------------
 Then, run following to start downloading the articles and headline of each article. Please note that, this dataset doesn't have headline information, therefore we have to download the headline from each url by re-downloading the whole article.
 
 .. code:: bash

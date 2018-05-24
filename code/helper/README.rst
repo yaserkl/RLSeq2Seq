@@ -77,7 +77,7 @@ Finally, we use the following to create our train, dev, test datasets:
 
 .. code:: bash
 
-    python cnn_dm_data_merger.py ~/data/cnn_dm/ ./filter_files.txt cnn.txt
+    python cnn_dm_data_merger.py ~/data/cnn_dm/ cnn_dm.txt
 
 =================
 Newsroom Dataset

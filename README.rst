@@ -40,7 +40,11 @@ Motivation
 ============
 
 
+---------------------------------------------------------------------------
 
+============
+DATASET
+============
 
 
 ---------------------------------------------------------------------------
@@ -57,8 +61,11 @@ Dependencies
 Python
 ~~~~~~~~~~~~~~~~~~~
 
-  - Numpy
-  - Scipy
+Python requirements can be installed as follows:
+
+.. code:: bash
+
+    pip install -r requirements.txt
 
 ~~~~~~~~~~~~~~~~~~~
 TensorFlow

@@ -63,9 +63,9 @@ def run(fl):
                     phrase = []
                     prev_ent_type = word.ent_type_
                 continue
-            if word.pos_ == "NUM":
-                word_text= '#'
-                word_pos = 'NUM'
+            #if word.pos_ == "NUM":
+            #    word_text= '#'
+            #    word_pos = 'NUM'
             if word.ent_type_ != "" and word.ent_type_ in nerlist:
                 if prev_ent_type == word.ent_type_:
                     phrase.append(word_text)

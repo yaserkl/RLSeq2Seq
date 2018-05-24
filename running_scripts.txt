@@ -1,0 +1,27 @@
+===================================================================================================
+afunction-nopretrain, NA
+===================================================================================================
+CUDA_VISIBLE_DEVICES=1,2 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/pointer-original/ --exp_name=afunction-nopretrain --batch_size=80 --max_iter=43083 --rl_training=True --intradecoder=False --use_temporal_attention=False --eta=2.17599E-05 --scheduled_sampling=True --sampling_probability=2.17599E-05 --dqn_gpu_num=1
+
+#### coverage
+CUDA_VISIBLE_DEVICES=0,1 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/pointer-original/ --exp_name=rl-pointer-vfunction --batch_size=48 --max_iter=76593 --rl_training=True --intradecoder=True --use_temporal_attention=True --eta=1.30559E-05 --scheduled_sampling=True --sampling_probability=1.30559E-05 --coverage=True --convert_to_coverage_model=True --sampled_greedy_flag=True
+
+CUDA_VISIBLE_DEVICES=0,1 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/pointer-original/ --exp_name=rl-pointer-vfunction --batch_size=48 --max_iter=76593 --rl_training=True --intradecoder=True --use_temporal_attention=True --eta=1.30559E-05 --scheduled_sampling=True --sampling_probability=1.30559E-05 --coverage=True --sampled_greedy_flag=True
+
+
+===================================================================================================
+afunction-pretrain-greedy, NA
+===================================================================================================
+CUDA_VISIBLE_DEVICES=0,1 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/pointer-original/ --exp_name=rl-pointer-vfunction-nopretrain --batch_size=48 --max_iter=29919 --rl_training=False --intradecoder=True --use_temporal_attention=True --scheduled_sampling=True --sampling_probability=1.30559E-05 --sampled_greedy_flag=True
+
+
+#### RL
+CUDA_VISIBLE_DEVICES=0,1 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/pointer-original/ --exp_name=afunction-nopretrain --batch_size=48 --max_iter=72000 --rl_training=True --intradecoder=True --use_temporal_attention=True --eta=1.30559E-05 --scheduled_sampling=True --sampling_probability=1.30559E-05 --sampled_greedy_flag=True
+
+#### coverage
+CUDA_VISIBLE_DEVICES=0,1 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/pointer-original/ --exp_name=rl-pointer-vfunction --batch_size=48 --max_iter=76593 --rl_training=True --intradecoder=True --reward_function=bleu --k=1 --use_temporal_attention=True --eta=1.30559E-05 --scheduled_sampling=True --sampling_probability=1.30559E-05 --sampled_greedy_flag=True
+
+
+
+
+CUDA_VISIBLE_DEVICES=0,1 python run_summarization.py --mode=train --data_path=/home/yaserkl/wapo/data/cnn_dm/finished_files/chunked/train_* --vocab_path=/home/yaserkl/wapo/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/pointer-original/ --exp_name=afunction-nopretrain --batch_size=32 --max_iter=72000 --rl_training=True --intradecoder=True --use_temporal_attention=True --eta=1.30559E-05 --scheduled_sampling=True --sampling_probability=1.30559E-05 --sampled_greedy_flag=True

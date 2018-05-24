@@ -10,7 +10,8 @@ CNN-Daily Mail
 First Option: Download the processed data
 -------------------------------------------
 
-@JafferWilson provided the processed data, which you can download from here: (https://github.com/JafferWilson/Process-Data-of-CNN-DailyMail).
+@JafferWilson provided the processed data, which you can download from `here 
+<https://github.com/JafferWilson/Process-Data-of-CNN-DailyMail>`_.
 
 -------------------------------------------------------
 Second Option: Process dataset using @abisee code

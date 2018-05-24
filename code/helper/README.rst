@@ -3,15 +3,16 @@
 CNN-Daily Mail
 ********************
 
-=========================================
+===========================================
 First Option: Download the processed data
-=========================================
+===========================================
 
 @JafferWilson provided the processed data, which you can download [here](https://github.com/JafferWilson/Process-Data-of-CNN-DailyMail).
 
 ============================================================
 Second Option: Process dataset using @abisee code
 ============================================================
+
 Check out the pre-processing in [here](https://github.com/abisee/cnn-dailymail)
 
 ============================================================
@@ -29,6 +30,7 @@ As per @abisee, these files contain 114 examples for which the article text is m
 ------------------------------------------------------------------
 Download article, headline, and highlights from raw data
 ------------------------------------------------------------------
+
 Then, run following to start downloading the articles and headline of each article. Please note that, this dataset doesn't have headline information, therefore we have to download the headline from each url by re-downloading the whole article.
 
 .. code:: bash
@@ -43,6 +45,7 @@ And run this to download the highlights:
 ----------------------
 Pre-process the data
 ----------------------
+
 The main pre-processing that we do on this dataset is the following:
 1- Use [Spacy](http://spacy.io/) to tokenize and process the articles and its highlights.
 2- We first sentence tokenize each article and then use word tokenization and re-join everything to get the full sentence.

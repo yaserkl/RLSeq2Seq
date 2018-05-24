@@ -14,7 +14,7 @@ Easy-TensorFlow
 .. image:: https://img.shields.io/github/issues/Naereen/StrapDown.js.svg
       :target: https://github.com/yaserkl/RLSeq2Seq/issues
 
-The goal of this repository is to provide comprehensive tutorials for TensorFlow while maintaining the simplicity of the code.
+The goal of this repository is ...
 
 
 #################

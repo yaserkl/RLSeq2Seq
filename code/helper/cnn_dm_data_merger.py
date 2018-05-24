@@ -4,7 +4,7 @@
 # it will return:
 # --president_trump said he based his decision on " open hostility " from north_korea EOS--
 
-# python cnn_dm_data_merger.py ~/data/cnn_dm/ ./filter_files.txt cnn.txt
+# python cnn_dm_data_merger.py ~/data/cnn_dm/ cnn_dm.txt
 
 # ~/data/cnn_dm/: This directory must contains the following subdirectories:
 # --~/data/cnn_dm/cnn/
@@ -22,11 +22,11 @@ from collections import defaultdict
 import pandas as pd
 
 root_dir = sys.argv[1]
-filter_file = sys.argv[2]
-outfile = sys.argv[3]
+outfile = sys.argv[2]
 
 datasets = ['cnn','dailymail']
 df = defaultdict(list)
+fw = open('{}/{}'.format(working_dir,outfile),'w')
 for dataset in datasets:
     working_dir = os.path.join(root_dir, dataset)
     files = glob('{}/article_spacy_line/*'.format(working_dir))
@@ -34,14 +34,11 @@ for dataset in datasets:
     filter_files = [k.strip() for k in open(filter_file).readlines()]
     files = [k for k in files if k.split('/')[-1] not in filter_files]
     print(len(files))
-    fw = open('{}/{}'.format(working_dir,outfile),'w')
-    fwf = open(filter_file,'a')
     for fl in files:
         filename = fl.split('/')[-1]
         fasl = open('{}/article_spacy_line/{}'.format(working_dir,filename))
         lines = ['<s> {} </s> '.format(' '.join(k.strip().split())) for k in fasl]
         if len(lines)==0:
-            fwf.write('{}\n'.format(filename))
             continue
         df['article'].append(''.join(lines))
         article_line = '<d> {}</d>'.format(''.join(lines))
@@ -74,8 +71,6 @@ for dataset in datasets:
         fw.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(article_line,article_pos,article_ner,title_line,title_pos,title_ner,highlight_line,highlight_pos,highlight_ner))
 
     fw.close()
-    fwf.close()
-
 
 dt = pd.DataFrame.from_dict(df,orient='columns')
 train, validate, test = np.split(dt.sample(frac=1), [int(.8*len(dt)), int(.1*len(dt))])

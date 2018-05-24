@@ -7,13 +7,13 @@ CNN-Daily Mail
 First Option: Download the processed data
 ===========================================
 
-@JafferWilson provided the processed data, which you can download [here](https://github.com/JafferWilson/Process-Data-of-CNN-DailyMail).
+@JafferWilson provided the processed data, which you can download from here: (https://github.com/JafferWilson/Process-Data-of-CNN-DailyMail).
 
 ============================================================
 Second Option: Process dataset using @abisee code
 ============================================================
 
-Check out the pre-processing in [here](https://github.com/abisee/cnn-dailymail)
+Check out the pre-processing in here: (https://github.com/abisee/cnn-dailymail)
 
 ============================================================
 Third Option: Process dataset using our helper code
@@ -23,7 +23,7 @@ Third Option: Process dataset using our helper code
 Download Raw Data
 ----------------------
 
-Through our helper codes, we first download all the articles in both CNN and Daily Mail dataset along with the title of each article and their highlights. All you need to do is to download the "*.story" files for each dataset from [here](http://cs.nyu.edu/~kcho/DMQA/).
+Through our helper codes, we first download all the articles in both CNN and Daily Mail dataset along with the title of each article and their highlights. All you need to do is to download the "*.story" files for each dataset from here: (http://cs.nyu.edu/~kcho/DMQA/).
 
 As per @abisee, these files contain 114 examples for which the article text is missing, we store list of these files in the filter_data.txt file and during our pre-processing we remove them from the dataset.
 
@@ -38,6 +38,7 @@ Then, run following to start downloading the articles and headline of each artic
     python cnn_dm_downloader.py ~/data/cnn_dm/[cnn,dailymail]/ ~/data/cnn_dm/[cnn,dailymail]/processed/ article
 
 And run this to download the highlights:
+
 .. code:: bash
 
     python cnn_dm_downloader.py ~/data/cnn_dm/[cnn,dailymail]/ ~/data/cnn_dm/[cnn,dailymail]/processed/ highlight
@@ -61,7 +62,10 @@ We can run our pre-processing using the following command:
 
     python cnn_dm_data_maker.py ~/data/cnn_dm/[cnn,dailymail]/ ~/data/cnn_dm/[cnn,dailymail]/[article,title,highlight] [article,title/highlight]
 
-## 3. Create Train, Dev, Test
+-------------------------
+Create Train, Dev, Test
+-------------------------
+
 Finally, we use the following to create our train, dev, test datasets:
 
 .. code:: bash

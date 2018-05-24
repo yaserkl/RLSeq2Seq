@@ -1,20 +1,21 @@
 
 ********************
-Easy-TensorFlow
+CNN-Daily Mail
 ********************
+Through our helper codes, we first download all the articles in both CNN and Daily Mail dataset along with the title of each article and their highlights. All you need to do is to download the *.story files for each dataset from the following links:
 
-.. image:: https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat
-    :target: https://github.com/yaserkl/RLSeq2Seq/pulls
-.. image:: https://img.shields.io/badge/Made%20with-Python-1f425f.svg
-      :target: https://www.python.org/
-.. image:: https://img.shields.io/pypi/l/ansicolortags.svg
-      :target: https://github.com/yaserkl/RLSeq2Seq/blob/master/LICENSE.txt
-.. image:: https://img.shields.io/github/contributors/Naereen/StrapDown.js.svg
-      :target: https://github.com/yaserkl/RLSeq2Seq/graphs/contributors
-.. image:: https://img.shields.io/github/issues/Naereen/StrapDown.js.svg
-      :target: https://github.com/yaserkl/RLSeq2Seq/issues
+Then run this to start downloading the articles and headline of each article:
+.. code:: bash
 
-The goal of this repository is ...
+    python cnn_dm_downloader.py ~/data/cnn_dm/cnn/ ~/data/cnn_dm/cnn/processed/ article
+
+And run this to download the highlights:
+.. code:: bash
+
+    python cnn_dm_downloader.py ~/data/cnn_dm/cnn/ ~/data/cnn_dm/cnn/processed/ highlight
+
+
+
 
 
 #################

@@ -381,7 +381,7 @@ def attention_decoder(_hps,
         final_dist = vocab_dist
 
       final_dists.append(final_dist)
-      if _hps.rl_training or _hps.scheduled_sampling: # do the sampling only when rl_training is on
+      if _hps.rl_training or _hps.ac_training or _hps.scheduled_sampling:
         one_hot_k_samples = tf.distributions.Multinomial(total_count=1., probs=final_dist).sample(_hps.k) # sample once according to https://arxiv.org/pdf/1705.04304.pdf, size (k,batch_size,extended_vsize)
         k_argmax = tf.argmax(one_hot_k_samples,axis=2,output_type=tf.int32) # (k, batch_size)
         k_sample = tf.transpose(k_argmax) # this will take the final_dist and sample from it for a total count of k (k samples), the result is of shape (batch_size,k)

@@ -132,7 +132,7 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
     decoder_outputs.append(decoder_output)
     encoder_es.append(encoder_e)
 
-    if FLAGS.rl_training:
+    if FLAGS.ac_training:
       with dqn_graph.as_default():
         transitions = [Transition(state, None, None, None, None, None, None) for state in decoder_output]
         dqn_results = dqn.run_test_steps(dqn_sess, x=transitions)

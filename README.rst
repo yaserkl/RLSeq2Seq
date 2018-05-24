@@ -39,6 +39,9 @@ Table of Contents
 Motivation
 ============
 
+.. image:: docs/_img/seq2seqmodel.png
+    :target: /home/sina/github/RLSeq2Seq/docs/_img/seq2seqmodel.png
+
 
 ---------------------------------------------------------------------------
 

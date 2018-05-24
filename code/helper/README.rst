@@ -2,25 +2,25 @@
 Helper Codes
 ********************
 
-#################
+=================
 CNN-Daily Mail
-#################
+=================
 
-===========================================
+-------------------------------------------
 First Option: Download the processed data
-===========================================
+-------------------------------------------
 
 @JafferWilson provided the processed data, which you can download from here: (https://github.com/JafferWilson/Process-Data-of-CNN-DailyMail).
 
-============================================================
+-------------------------------------------------------
 Second Option: Process dataset using @abisee code
-============================================================
+-------------------------------------------------------
 
 Check out the pre-processing in here: (https://github.com/abisee/cnn-dailymail)
 
-============================================================
+-------------------------------------------------------
 Third Option: Process dataset using our helper code
-============================================================
+-------------------------------------------------------
 
 ----------------------
 Download Raw Data
@@ -75,9 +75,9 @@ Finally, we use the following to create our train, dev, test datasets:
 
     python cnn_dm_data_merger.py ~/data/cnn_dm/ ./filter_files.txt cnn.txt
 
-#################
+=================
 Newsroom Dataset
-#################
+=================
 
 ----------------------
 Download Raw Data

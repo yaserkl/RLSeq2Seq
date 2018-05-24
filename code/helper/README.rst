@@ -75,3 +75,23 @@ Finally, we use the following to create our train, dev, test datasets:
 
     python cnn_dm_data_merger.py ~/data/cnn_dm/ ./filter_files.txt cnn.txt
 
+#################
+Newsroom Dataset
+#################
+
+----------------------
+Download Raw Data
+----------------------
+
+You can follow (https://github.com/clic-lab/newsroom) to download and extract this dataset. After downloading you should have "[train,test,dev].data" files.
+
+----------------------
+Run Pre-processing
+----------------------
+
+This is completely similar to the CNN/Daily Mail pre-processing. The input directory must contain "[train,test,dev].data" files.
+
+.. code:: bash
+
+    python summaries_data_maker.py ~/data/newsroom/
+

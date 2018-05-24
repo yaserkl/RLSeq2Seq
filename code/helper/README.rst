@@ -17,7 +17,8 @@ First Option: Download the processed data
 Second Option: Process dataset using @abisee code
 -------------------------------------------------------
 
-Check out the pre-processing in here: (https://github.com/abisee/cnn-dailymail)
+Check out the pre-processing in `here 
+<https://github.com/abisee/cnn-dailymail>`_.
 
 -------------------------------------------------------
 Third Option: Process dataset using our helper code
@@ -27,7 +28,8 @@ Third Option: Process dataset using our helper code
 Download Raw Data
 ----------------------
 
-Through our helper codes, we first download all the articles in both CNN and Daily Mail dataset along with the title of each article and their highlights. All you need to do is to download the "*.story" files for each dataset from here: (http://cs.nyu.edu/~kcho/DMQA/).
+Through our helper codes, we first download all the articles in both CNN and Daily Mail dataset along with the title of each article and their highlights. All you need to do is to download the "*.story" files for each dataset from `here 
+<http://cs.nyu.edu/~kcho/DMQA/>`_.
 
 As per @abisee, these files contain 114 examples for which the article text is missing, we store list of these files in the filter_data.txt file and during our pre-processing we remove them from the dataset.
 
@@ -84,7 +86,8 @@ Newsroom Dataset
 Download Raw Data
 ----------------------
 
-You can follow (https://github.com/clic-lab/newsroom) to download and extract this dataset. After downloading you should have "[train,test,dev].data" files.
+You can follow this `link 
+<https://github.com/clic-lab/newsroom>`_ to download and extract this dataset. After downloading you should have "[train,test,dev].data" files.
 
 ----------------------
 Run Pre-processing

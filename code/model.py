@@ -40,20 +40,6 @@ class SummarizationModel(object):
   def __init__(self, hps, vocab):
     self._hps = hps
     self._vocab = vocab
-    if self._hps.rl_training:
-      '''
-      self.discount_rates = lil_matrix((self._hps.max_dec_steps, self._hps.max_dec_steps))
-      for t in range(self._hps.max_dec_steps):
-        for t_prime in range(t, self._hps.max_dec_steps):
-          self.discount_rates[t,t_prime] = np.power(self._hps.gamma, t_prime-t)
-      '''
-      enc = OneHotEncoder()
-      times = np.array(range(self._hps.max_dec_steps), dtype=np.int16) # shape (max_dec_steps)
-      times = enc.fit_transform(np.reshape(times,[100,-1])).toarray() # (max_dec_steps, max_dec_steps)
-      times = np.array([[times[i]]*self._hps.batch_size for i in range(self._hps.max_dec_steps)])
-      times = np.transpose(times, [1,0,2]) # shape (batch_size, <=max_decoding_steps, <=max_decoding_steps)
-      times = np.expand_dims(times, 1) # shape (batch_size, 1, <=max_decoding_steps, <=max_decoding_steps)
-      self.times = np.concatenate([times] * hps.k,axis=1) # shape (batch_size, k, <=max_decoding_steps, <=max_decoding_steps)
 
   def reward_function(self, reference, summary, measure='rouge_l/f_score'):
     if 'rouge' in measure:
@@ -87,7 +73,10 @@ class SummarizationModel(object):
     if FLAGS.pointer_gen:
       self._enc_batch_extend_vocab = tf.placeholder(tf.int32, [hps.batch_size, None], name='enc_batch_extend_vocab')
       self._max_art_oovs = tf.placeholder(tf.int32, [], name='max_art_oovs')
-    if FLAGS.rl_training: # added by yaserkl@vt.edu for the purpose of calculating rouge loss
+    if FLAGS.rl_training:
+      self._sampled_sentence_r_values = tf.placeholder(tf.float32, [None], name='sampled_sentence_r_values')
+      self._greedy_sentence_r_values = tf.placeholder(tf.float32, [None], name='greedy_sentence_r_values')
+    if FLAGS.ac_training: # added by yaserkl@vt.edu for the purpose of calculating rouge loss
       self._q_estimates = tf.placeholder(tf.float32, [self._hps.batch_size,self._hps.k,self._hps.max_dec_steps, None], name='q_estimates')
     if FLAGS.scheduled_sampling:
       self._sampling_probability = tf.placeholder(tf.float32, None, name='sampling_probability')
@@ -214,60 +203,6 @@ class SummarizationModel(object):
       prev_decoder_outputs=prev_decoder_outputs, 
       prev_encoder_es = prev_encoder_es)
 
-  def _calc_final_dist(self, vocab_dists, attn_dists):
-    """Calculate the final distribution, for the pointer-generator model
-
-    Args:
-      vocab_dists: The vocabulary distributions. List length max_dec_steps of (batch_size, vsize) arrays. The words are in the order they appear in the vocabulary file.
-      attn_dists: The attention distributions. List length max_dec_steps of (batch_size, max_enc_steps) arrays
-
-    Returns:
-      final_dists: The final distributions. List length max_dec_steps of (batch_size, extended_vsize) arrays.
-    """
-    with tf.variable_scope('final_distribution'):
-      # Multiply vocab dists by p_gen and attention dists by (1-p_gen)
-      vocab_dists = [p_gen * dist for (p_gen,dist) in zip(self.p_gens, vocab_dists)]
-      attn_dists = [(1-p_gen) * dist for (p_gen,dist) in zip(self.p_gens, attn_dists)]
-
-      # Concatenate some zeros to each vocabulary dist, to hold the probabilities for in-article OOV words
-      extended_vsize = self._vocab.size() + self._max_art_oovs # the maximum (over the batch) size of the extended vocabulary
-      extra_zeros = tf.zeros((self._hps.batch_size, self._max_art_oovs))
-      vocab_dists_extended = [tf.concat(axis=1, values=[dist, extra_zeros]) for dist in vocab_dists] # list length max_dec_steps of shape (batch_size, extended_vsize)
-
-      # Project the values in the attention distributions onto the appropriate entries in the final distributions
-      # This means that if a_i = 0.1 and the ith encoder word is w, and w has index 500 in the vocabulary, then we add 0.1 onto the 500th entry of the final distribution
-      # This is done for each decoder timestep.
-      # This is fiddly; we use tf.scatter_nd to do the projection
-      batch_nums = tf.range(0, limit=self._hps.batch_size) # shape (batch_size)
-      batch_nums = tf.expand_dims(batch_nums, 1) # shape (batch_size, 1)
-      attn_len = tf.shape(self._enc_batch_extend_vocab)[1] # number of states we attend over
-      batch_nums = tf.tile(batch_nums, [1, attn_len]) # shape (batch_size, attn_len)
-      indices = tf.stack( (batch_nums, self._enc_batch_extend_vocab), axis=2) # shape (batch_size, attn_len, 2)
-      shape = [self._hps.batch_size, extended_vsize]
-      attn_dists_projected = [tf.scatter_nd(indices, copy_dist, shape) for copy_dist in attn_dists] # list length max_dec_steps (batch_size, extended_vsize)
-
-      # Add the vocab distributions and the copy distributions together to get the final distributions
-      # final_dists is a list length max_dec_steps; each entry is a tensor shape (batch_size, extended_vsize) giving the final distribution for that decoder timestep
-      # Note that for decoder timesteps and examples corresponding to a [PAD] token, this is junk - ignore.
-      final_dists = [vocab_dist + copy_dist for (vocab_dist,copy_dist) in zip(vocab_dists_extended, attn_dists_projected)]
-
-      return final_dists
-  '''
-  def _calc_final_q_estimates(self, q_estimates):
-    """Calculate the final distribution, for the pointer-generator model
-
-    Args:
-      q_estimates: Q values. shape of (batch_size, k, max_dec_steps, vsize)
-
-    Returns:
-      q_estimates_extended: shape of (batch_size, k, max_dec_steps, vsize_extended)
-    """
-    mean_values = tf.expand_dims(tf.reduce_mean(q_estimates,axis=-1),axis=-1)
-    average_q_values = mean_values * tf.ones((self._hps.batch_size, self._hps.k, self._hps.max_dec_steps, self._max_art_oovs))
-    q_estimates_extended = tf.concat([q_estimates, average_q_values],axis=-1)
-
-    return q_estimates_extended
-  '''
   def _add_emb_vis(self, embedding_var):
     """Do setup so that we can view word embedding visualization in Tensorboard, as described here:
     https://www.tensorflow.org/get_started/embedding_viz
@@ -314,21 +249,9 @@ class SummarizationModel(object):
         self.decoder_outputs, self._dec_out_state, self.attn_dists, self.p_gens, self.coverage, self.vocab_scores, self.final_dists, self.samples, self.greedy_search_samples, self.temporal_es = self._add_decoder(emb_dec_inputs, embedding)
 
       if hps.mode in ['train', 'eval']:
-        if hps.rl_training:
-          _samples = tf.stack(self.samples,axis=2) # (batch_size , k, <=max_dec_steps)
-          _greedy_search_samples = tf.stack(self.greedy_search_samples,axis=2) # (batch_size , k, <=max_dec_steps)
-
-          cond = tf.less(_samples, self._vocab.size()) # replace oov with unk
-          samples_with_oov = tf.cast(cond, tf.int32) * _samples
-          cond = tf.less(_greedy_search_samples, self._vocab.size()) # replace oov with unk
-          greedy_samples_with_oov = tf.cast(cond, tf.int32) * _greedy_search_samples
-
+        if hps.ac_training or hps.rl_training:
           self.sampled_sentences = tf.unstack(tf.stack(self.samples,axis=2)) # list of length batch_size of (k, <=max_dec_steps) word indices
           self.greedy_search_sentences = tf.unstack(tf.stack(self.greedy_search_samples,axis=2)) # list of length batch_size of (k, <=max_dec_steps) word indices
-
-          self.sampled_sentences_embedding = [tf.nn.embedding_lookup(embedding, x) for x in tf.unstack(samples_with_oov)] # list of length batch_size of (k, <=max_dec_steps, emb_dim)
-          self.greedy_search_sentences_embedding = [tf.nn.embedding_lookup(embedding, x) for x in tf.unstack(greedy_samples_with_oov)] # list of length batch_size of (k, <=max_dec_steps, emb_dim)
-
         else:
           self.sampled_sentences = []
           self.greedy_search_sentences = []
@@ -356,7 +279,7 @@ class SummarizationModel(object):
         loss_per_step.append(losses)
       self._pgen_loss = _mask_and_avg(loss_per_step, self._dec_padding_mask)
       self.variable_summaries('pgen_loss', self._pgen_loss)
-      if self._hps.rl_training:
+      if self._hps.ac_training:
         #self._q_estimates = self._calc_final_q_estimates(self._q_estimates)
         loss_per_step = [] # will be list length k each containing a list of shape <=max_dec_steps which each has the shape (batch_size)
         q_loss_per_step = [] # will be list length k each containing a list of shape <=max_dec_steps which each has the shape (batch_size)
@@ -367,13 +290,7 @@ class SummarizationModel(object):
           q_loss_per_sample = [] # length <=max_dec_steps of batch_sizes
           q_val_per_sample = tf.unstack(unstacked_q[sample_id], axis =1) # list of <=max_dec_step (batch_size, vsize_extended)
           for dec_step, (dist, q_value) in enumerate(zip(self.final_dists, q_val_per_sample)):
-            # dist has shape (batch_size, vsize_extended)
-            #if self._hps.sampled_greedy_flag: # if True, we use the greedy sampling to calculate the loss
-            #  targets = tf.squeeze(self.greedy_search_samples[dec_step][:,sample_id]) # The indices of the sampled words. shape (batch_size)
-            #else:
-            # Similar to Self-Critic models, target is our sampled sentence
             targets = tf.squeeze(self.samples[dec_step][:,sample_id]) # The indices of the sampled words. shape (batch_size)
-            #targets = self._target_batch[:,dec_step] # target always should be the ground-truth data
             indices = tf.stack((batch_nums, targets), axis=1) # shape (batch_size, 2)
             gold_probs = tf.gather_nd(dist, indices) # shape (batch_size). prob of correct words on this step
             losses = -tf.log(gold_probs)
@@ -393,12 +310,34 @@ class SummarizationModel(object):
           self.variable_summaries('reinforce_loss', self._rl_loss)
           self.variable_summaries('reinforce_shared_loss', self._reinforce_shared_loss)
 
+      if self._hps.rl_training:
+        #### calculating the rl loss according to Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
+        loss_per_step = [] # will be list length max_dec_steps containing shape (batch_size)
+        batch_nums = tf.range(0, limit=self._hps.batch_size) # shape (batch_size)
+        for dec_step, dist in enumerate(self.final_dists):
+          targets = tf.squeeze(self.samples[dec_step]) # The indices of the sampled words. shape (batch_size)
+          indices = tf.stack( (batch_nums, targets), axis=1) # shape (batch_size, 2)
+          gold_probs = tf.gather_nd(dist, indices) # shape (batch_size). prob of correct words on this step
+          losses = -tf.log(gold_probs)
+          loss_per_step.append(losses)
+        with tf.variable_scope('reinforce_loss'):
+          r_diff = tf.reduce_mean(self._sampled_sentence_r_values - self._greedy_sentence_r_values)
+          self._rl_avg_logprobs = _mask_and_avg(loss_per_step, self._dec_padding_mask)
+          self._rl_loss = r_diff * self._rl_avg_logprobs # Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
+          self._reinforce_shared_loss = self._eta * self._rl_loss + (tf.constant(1.,dtype=tf.float32) - self._eta) * self._pgen_loss # equation 16 in https://arxiv.org/pdf/1705.04304.pdf
+          self.variable_summaries('reinforce_avg_logprobs', self._rl_avg_logprobs)
+          self.variable_summaries('reinforce_loss', self._rl_loss)
+          self.variable_summaries('reinforce_sampled_r_value', tf.reduce_mean(self._sampled_sentence_r_values))
+          self.variable_summaries('reinforce_greedy_r_value', tf.reduce_mean(self._greedy_sentence_r_values))
+          self.variable_summaries('reinforce_r_diff', r_diff)
+          self.variable_summaries('reinforce_shared_loss', self._reinforce_shared_loss)
+
       # Calculate coverage loss from the attention distributions
       if self._hps.coverage:
         with tf.variable_scope('coverage_loss'):
           self._coverage_loss = _coverage_loss(self.attn_dists, self._dec_padding_mask)
           self.variable_summaries('coverage_loss', self._coverage_loss)
-        if self._hps.rl_training:
+        if self._hps.rl_training or self._hps.ac_training:
           with tf.variable_scope('reinforce_loss'):
             self._reinforce_cov_total_loss = self._reinforce_shared_loss + self._hps.cov_loss_wt * self._coverage_loss
             self.variable_summaries('reinforce_coverage_loss', self._reinforce_cov_total_loss)
@@ -409,7 +348,7 @@ class SummarizationModel(object):
   def _add_shared_train_op(self):
     """Sets self._train_op, the op to run for training."""
     # Take gradients of the trainable variables w.r.t. the loss function to minimize
-    if self._hps.rl_training:
+    if self._hps.rl_training or self._hps.ac_training:
       loss_to_minimize = self._reinforce_shared_loss
       if self._hps.coverage:
         #loss_to_minimize = self._reinforce_cov_total_loss
@@ -453,11 +392,10 @@ class SummarizationModel(object):
   def collect_dqn_transitions(self, sess, batch, step, max_art_oovs):
     """Runs one training iteration. Returns a dictionary containing train op, summaries, loss, global_step and (optionally) coverage loss."""
     feed_dict = self._make_feed_dict(batch)
-    if self._hps.rl_training:
-      if self._hps.fixed_eta:
-        feed_dict[self._eta] = self._hps.eta
-      else:
-        feed_dict[self._eta] = min(step * self._hps.eta,1.)
+    if self._hps.fixed_eta:
+      feed_dict[self._eta] = self._hps.eta
+    else:
+      feed_dict[self._eta] = min(step * self._hps.eta,1.)
     if self._hps.scheduled_sampling:
       if self._hps.fixed_sampling_probability:
         feed_dict[self._sampling_probability] = self._hps.sampling_probability
@@ -474,36 +412,32 @@ class SummarizationModel(object):
       self.v_values = np.zeros((self._hps.batch_size, self._hps.k, self._hps.max_dec_steps),dtype=np.float32) # (batch_size, k, <=max_dec_steps)
     else:
       self.r_values = np.zeros((self._hps.batch_size, self._hps.k, self._hps.max_dec_steps),dtype=np.float32) # (batch_size, k, <=max_dec_steps)
-    if self._hps.rl_training:
-      to_return = {
-        'sampled_sentences': self.sampled_sentences,
-        'greedy_search_sentences': self.greedy_search_sentences,
-        'decoder_outputs': self.decoder_outputs,
-        'greedy_search_sentences_embedding': self.greedy_search_sentences_embedding,
-        'sampled_sentences_embedding': self.sampled_sentences_embedding,
-      }
-      ret_dict = sess.run(to_return, feed_dict)
+    to_return = {
+      'sampled_sentences': self.sampled_sentences,
+      'greedy_search_sentences': self.greedy_search_sentences,
+      'decoder_outputs': self.decoder_outputs,
+    }
+    ret_dict = sess.run(to_return, feed_dict)
 
-      # calculate reward
-      _t = time.time()
-      ### TODO: do it in parallel???
-      for _n, (sampled_sentence, greedy_search_sentence, target_sentence) in enumerate(zip(ret_dict['sampled_sentences'],ret_dict['greedy_search_sentences'], batch.target_batch)): # run batch_size time
-        _gts = target_sentence
-        for i in range(self._hps.k):
-          _ss = greedy_search_sentence[i] # reward is calculated over the best action through greedy search
-          if self._hps.calculate_true_q:
-            A, Q, V, R = self.caluclate_advantage_function(_ss, _gts, vsize_extended)
-            # TODO: select only the sampled word advantage for calculation
-            self.r_values[_n,i,:,:] = R
-            self.advantages[_n,i,:,:] = A
-            self.q_values[_n,i,:,:] = Q
-            self.v_values[_n,i,:] = V
-          else:
-            self.r_values[_n, i, :] = self.caluclate_single_reward(_ss, _gts) # len max_dec_steps
-      tf.logging.info('seconds for dqn collection: {}'.format(time.time()-_t))
-      trasitions = self.prepare_dqn_transitions(self._hps, ret_dict['decoder_outputs'], ret_dict['greedy_search_sentences'], vsize_extended)
-      return trasitions
-    return None
+    # calculate reward
+    _t = time.time()
+    ### TODO: do it in parallel???
+    for _n, (sampled_sentence, greedy_search_sentence, target_sentence) in enumerate(zip(ret_dict['sampled_sentences'],ret_dict['greedy_search_sentences'], batch.target_batch)): # run batch_size time
+      _gts = target_sentence
+      for i in range(self._hps.k):
+        _ss = greedy_search_sentence[i] # reward is calculated over the best action through greedy search
+        if self._hps.calculate_true_q:
+          A, Q, V, R = self.caluclate_advantage_function(_ss, _gts, vsize_extended)
+          # TODO: select only the sampled word advantage for calculation
+          self.r_values[_n,i,:,:] = R
+          self.advantages[_n,i,:,:] = A
+          self.q_values[_n,i,:,:] = Q
+          self.v_values[_n,i,:] = V
+        else:
+          self.r_values[_n, i, :] = self.caluclate_single_reward(_ss, _gts) # len max_dec_steps
+    tf.logging.info('seconds for dqn collection: {}'.format(time.time()-_t))
+    trasitions = self.prepare_dqn_transitions(self._hps, ret_dict['decoder_outputs'], ret_dict['greedy_search_sentences'], vsize_extended)
+    return trasitions
 
   def caluclate_advantage_function(self, _ss, _gts, vsize_extended):
     R = np.zeros((self._hps.max_dec_steps, vsize_extended)) # shape (max_dec_steps, vocab_size)
@@ -530,11 +464,6 @@ class SummarizationModel(object):
 
       dec_length = decoder_states.shape[1]
       hidden_dim = decoder_states.shape[-1]
-      #emb_dim = greedy_samples_embedding.shape[-1]
-
-      # modifying advantage tensor to 
-      #_advantages = np.expand_dims(self.advantages, -1) # # (batch_size, k, <=max_dec_steps, vocab_size)
-      # generating time tensor to shape (<=max_decoding_steps, batch_size, k, 1)
 
       # modifying decoder state tensor to shape (batch_size, k, <=max_decoding_steps, hidden_dim)
       _decoder_states = np.expand_dims(decoder_states, 1)
@@ -571,24 +500,9 @@ class SummarizationModel(object):
                 # We update the q_values later, after collecting the q_estimates from DQN network.
                 transitions.append(Transition(state, action, state_prime, action_prime,self.r_values[i,k,t], np.zeros((vsize_extended)), False))
 
-      #features = np.reshape(features, [-1, self._hps.dqn_input_feature_len]) # now of shape (batch_size * k * <=max_decoding_steps, feature_len)
-      #_advantages = np.reshape(self.advantages, [-1,self._vocab.size()])
-      #_q_values = np.reshape(self.q_values, [-1,self._vocab.size()])
-      #_v_values = np.reshape(self.v_values, [-1,1])
-
-      #np.random.shuffle(features) # shuffle the dataset
-      #X_train, X_test, y_train, y_test = train_test_split(features[:,0:-1], features[:,-1], test_size=0.15, random_state=123)
-      #train = np.concatenate([X_train, np.expand_dims(y_train,1)],axis=-1)
-      #test = np.concatenate([X_test, np.expand_dims(y_test,1)],axis=-1)
-      #predict = features
-      #features_only = features[:,0:-1]
-      #labels = features[:,-1]
-
       return transitions
 
   def calc_reward(self, t, _ss, _gts): # optimizing based on ROUGE-2
-    #_gts_len = len(_gts)
-    #_ss = np.append(_ss[0:t+1], [0]*(_gts_len-t-1)) # padding [UNK] to the sampled sentence so that rouge_l doesn't return 1 for small strings
     summary = ' '.join([str(k) for k in _ss[0:t]])
     reference = ' '.join([str(k) for k in _gts])
     reward = self.reward_function(reference, summary, self._hps.reward_function)
@@ -606,7 +520,7 @@ class SummarizationModel(object):
 
   def run_train_steps(self, sess, batch, step, q_estimates=None):
     feed_dict = self._make_feed_dict(batch)
-    if self._hps.rl_training:
+    if self._hps.ac_training or self._hps.rl_training:
       if self._hps.fixed_eta:
         feed_dict[self._eta] = self._hps.eta
       else:
@@ -619,9 +533,27 @@ class SummarizationModel(object):
       ranges = [np.exp(float(step) * self._hps.alpha),np.finfo(np.float64).max] # to avoid overflow
       feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function        
 
-    if self._hps.rl_training:
+    if self._hps.ac_training:
       self.q_estimates = q_estimates
       feed_dict[self._q_estimates]= self.q_estimates
+
+    if self._hps.rl_training:
+      sampled_sentence_r_values = []
+      greedy_sentence_r_values = []
+      #### takes the sampled and greed_search sentence to calculate the reward measure
+      to_return = {
+        'sampled_sentences': self.sampled_sentences,
+        'greedy_search_sentences': self.greedy_search_sentences
+      }
+      ret_dict = sess.run(to_return, feed_dict)
+      # calculate reward
+      for sampled_sentence, greedy_search_sentence, target_sentence in zip(ret_dict['sampled_sentences'],ret_dict['greedy_search_sentences'],batch.target_batch):
+         # optimizing based on reward function measure
+        reference_sent = ' '.join([str(k) for k in target_sentence])
+        sampled_sent = ' '.join([str(k) for k in sampled_sentence])
+        sampled_sentence_r_values.append(self.reward_function(reference_sent, sampled_sent, self._hps.reward_function))
+        greedy_sent = ' '.join([str(k) for k in greedy_search_sentence])
+        greedy_sentence_r_values.append(self.reward_function(reference_sent, greedy_sent, self._hps.reward_function))
 
     to_return = {
         'train_op': self._shared_train_op,
@@ -630,13 +562,20 @@ class SummarizationModel(object):
         'global_step': self.global_step,
     }
 
+    if self._hps.rl_training:
+      to_return['sampled_sentence_r_values']= self._sampled_sentence_r_values
+      to_return['greedy_sentence_r_values']= self._greedy_sentence_r_values
+
+      feed_dict[self._sampled_sentence_r_values]=sampled_sentence_r_values
+      feed_dict[self._greedy_sentence_r_values]=greedy_sentence_r_values
+
     if self._hps.coverage:
       to_return['coverage_loss'] = self._coverage_loss
-      if self._hps.rl_training:
+      if self._hps.rl_training or self._hps.ac_training:
         to_return['reinforce_cov_total_loss']= self._reinforce_cov_total_loss
       if self._hps.pointer_gen:
         to_return['pointer_cov_total_loss'] = self._pointer_cov_total_loss
-    if self._hps.rl_training:
+    if self._hps.rl_training or self._hps.ac_training:
       to_return['shared_loss']= self._reinforce_shared_loss
       to_return['rl_loss']= self._rl_loss
       to_return['rl_avg_logprobs']= self._rl_avg_logprobs
@@ -646,7 +585,7 @@ class SummarizationModel(object):
   def run_eval_step(self, sess, batch, step, q_estimates=None):
     """Runs one training iteration. Returns a dictionary containing train op, summaries, loss, global_step and (optionally) coverage loss."""
     feed_dict = self._make_feed_dict(batch)
-    if self._hps.rl_training:
+    if self._hps.ac_training or self._hps.rl_training:
       if self._hps.fixed_eta:
         feed_dict[self._eta] = self._hps.eta
       else:
@@ -659,23 +598,48 @@ class SummarizationModel(object):
       ranges = [np.exp(float(step) * self._hps.alpha),np.finfo(np.float64).max] # to avoid overflow
       feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function        
 
-    if self._hps.rl_training:
+    if self._hps.ac_training:
       self.q_estimates = q_estimates
       feed_dict[self._q_estimates]= self.q_estimates
+
+    if self._hps.rl_training:
+      sampled_sentence_r_values = []
+      greedy_sentence_r_values = []
+      #### takes the sampled and greed_search sentence to calculate the reward measure
+      to_return = {
+        'sampled_sentences': self.sampled_sentences,
+        'greedy_search_sentences': self.greedy_search_sentences
+      }
+      ret_dict = sess.run(to_return, feed_dict)
+      # calculate reward
+      for sampled_sentence, greedy_search_sentence, target_sentence in zip(ret_dict['sampled_sentences'],ret_dict['greedy_search_sentences'],batch.target_batch):
+         # optimizing based on reward function measure
+        reference_sent = ' '.join([str(k) for k in target_sentence])
+        sampled_sent = ' '.join([str(k) for k in sampled_sentence])
+        sampled_sentence_r_values.append(self.reward_function(reference_sent, sampled_sent, self._hps.reward_function))
+        greedy_sent = ' '.join([str(k) for k in greedy_search_sentence])
+        greedy_sentence_r_values.append(self.reward_function(reference_sent, greedy_sent, self._hps.reward_function))
 
     to_return = {
         'summaries': self._summaries,
         'pgen_loss': self._pgen_loss,
         'global_step': self.global_step,
     }
+    
+    if self._hps.rl_training:
+      to_return['sampled_sentence_r_values']= self._sampled_sentence_r_values
+      to_return['greedy_sentence_r_values']= self._greedy_sentence_r_values
+
+      feed_dict[self._sampled_sentence_r_values]=sampled_sentence_r_values
+      feed_dict[self._greedy_sentence_r_values]=greedy_sentence_r_values
 
     if self._hps.coverage:
       to_return['coverage_loss'] = self._coverage_loss
-      if self._hps.rl_training:
+      if self._hps.rl_training or self._hps.ac_training:
         to_return['reinforce_cov_total_loss']= self._reinforce_cov_total_loss
       if self._hps.pointer_gen:
         to_return['pointer_cov_total_loss'] = self._pointer_cov_total_loss
-    if self._hps.rl_training:
+    if self._hps.rl_training or self._hps.ac_training:
       to_return['shared_loss']= self._reinforce_shared_loss
       to_return['rl_loss']= self._rl_loss
       to_return['rl_avg_logprobs']= self._rl_avg_logprobs

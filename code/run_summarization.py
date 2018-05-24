@@ -73,7 +73,7 @@ tf.app.flags.DEFINE_integer('gpu_num', 0, 'which gpu to use to train the model')
 tf.app.flags.DEFINE_boolean('pointer_gen', True, 'If True, use pointer-generator model. If False, use baseline model.')
 
 # Pointer-generator with RL
-tf.app.flags.DEFINE_boolean('rl_training', False, 'Size of vocabulary. These will be read from the vocabulary file in order. If the vocabulary file contains fewer words than this number, or if this number is set to 0, will take all words in the vocabulary file.')
+tf.app.flags.DEFINE_boolean('rl_training', False, 'Use policy-gradient training by collecting rewards at the end of sequence.')
 tf.app.flags.DEFINE_boolean('convert_to_reinforce_model', False, 'Convert a pointer model to a reinforce model. Turn this on and run in train mode. Your current training model will be copied to a new version (same name with _cov_init appended) that will be ready to run with coverage flag turned on, for the coverage training stage.')
 tf.app.flags.DEFINE_boolean('intradecoder', False, 'Use intradecoder attention or not')
 tf.app.flags.DEFINE_boolean('use_temporal_attention', False, 'whether to use temporal attention or not')
@@ -85,6 +85,7 @@ tf.app.flags.DEFINE_integer('k', 1, 'number of samples')
 tf.app.flags.DEFINE_string('reward_function', 'rouge_l/f_score', 'either bleu or one of the rouge measures (rouge_1/f_score,rouge_2/f_score,rouge_l/f_score)')
 
 # parameters of DDQN model
+tf.app.flags.DEFINE_boolean('ac_training', False, 'Use Actor-Critic learning by DDQN.')
 tf.app.flags.DEFINE_boolean('dqn_scheduled_sampling', False, 'whether to use scheduled sampling to use estimates of dqn model vs the actual q-estimates values')
 tf.app.flags.DEFINE_string('dqn_layers', '512,256,128', 'DQN dense hidden layer size, will create three dense layers with 512, 256, and 128 size')
 tf.app.flags.DEFINE_integer('dqn_replay_buffer_size', 50000, 'size of the replay buffer')
@@ -254,8 +255,8 @@ class Seq2Seq(object):
     self.model.build_graph() # build the graph
 
     if FLAGS.convert_to_reinforce_model:
-      assert FLAGS.rl_training, "To convert your pointer model to a reinforce model, run with convert_to_reinforce_model=True and rl_training=True"
-      self.convert_to_reinforce_model()    
+      assert (FLAGS.rl_training or FLAGS.ac_training), "To convert your pointer model to a reinforce model, run with convert_to_reinforce_model=True and either rl_training=True or ac_training=True"
+      self.convert_to_reinforce_model()
     if FLAGS.convert_to_coverage_model:
       assert FLAGS.coverage, "To convert your non-coverage model to a coverage model, run with convert_to_coverage_model=True and coverage=True"
       self.convert_to_coverage_model()
@@ -278,7 +279,7 @@ class Seq2Seq(object):
                        )
     self.summary_writer = self.sv.summary_writer
     self.sess = self.sv.prepare_or_wait_for_session(config=util.get_config())
-    if FLAGS.rl_training:
+    if FLAGS.ac_training:
       tf.logging.info('DDQN building graph')
       t1 = time.time()
       self.dqn_graph = tf.Graph()
@@ -300,8 +301,8 @@ class Seq2Seq(object):
                            )
         self.dqn_summary_writer = self.dqn_sv.summary_writer
         self.dqn_sess = self.dqn_sv.prepare_or_wait_for_session(config=util.get_config())
-      '''
-      # try loading a previously saved replay buffer
+      ''' #### TODO: try loading a previously saved replay buffer
+      # right now this doesn't work due to running DQN on a thread
       if os.path.exists(replaybuffer_pcl_path):
         tf.logging.info('Loading Replay Buffer...')
         try:
@@ -322,15 +323,8 @@ class Seq2Seq(object):
     except (KeyboardInterrupt, SystemExit):
       tf.logging.info("Caught keyboard interrupt on worker. Stopping supervisor...")
       self.sv.stop()
-      if FLAGS.rl_training:
+      if FLAGS.ac_training:
         self.dqn_sv.stop()
-        '''
-        self.dqn_trainer_alive = False
-        # dumping the replay buffer content
-        tf.logging.info("Dumping Replay Buffer to file: {}...".format(replaybuffer_pcl_path))
-        pickle.dump(self.replay_buffer, open(replaybuffer_pcl_path, "wb"))
-        tf.logging.info("Replay Buffer dumped to file: {}...".format(replaybuffer_pcl_path))
-        '''
 
   def run_training(self):
     """Repeatedly runs training iterations, logging loss to screen and writing summaries"""
@@ -341,7 +335,7 @@ class Seq2Seq(object):
       self.sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
 
     self.train_step = 0
-    if FLAGS.rl_training:
+    if FLAGS.ac_training:
       tf.logging.info('Starting DQN training thread...')
       self.dqn_train_step = 0
       self.thrd_dqn_training = Thread(target=self.dqn_training)
@@ -356,7 +350,7 @@ class Seq2Seq(object):
     while True: # repeats until interrupted
       batch = self.batcher.next_batch()
       t0=time.time()
-      if FLAGS.rl_training:
+      if FLAGS.ac_training:
         transitions = self.model.collect_dqn_transitions(self.sess, batch, self.train_step, batch.max_art_oovs) # len(batch_size * k * max_dec_steps)
         tf.logging.info('advantage values collection time: {}'.format(time.time()-t0))
         with self.dqn_graph.as_default():
@@ -422,14 +416,19 @@ class Seq2Seq(object):
       printer_helper['pgen_loss']= results['pgen_loss']
       if FLAGS.coverage:
         printer_helper['coverage_loss'] = results['coverage_loss']
-        if FLAGS.rl_training:
+        if FLAGS.rl_training or FLAGS.ac_training:
           printer_helper['rl_cov_total_loss']= results['reinforce_cov_total_loss']
         else:
           printer_helper['pointer_cov_total_loss'] = results['pointer_cov_total_loss']
-      if FLAGS.rl_training:
+      if FLAGS.rl_training or FLAGS.ac_training:
         printer_helper['shared_loss'] = results['shared_loss']
         printer_helper['rl_loss'] = results['rl_loss']
         printer_helper['rl_avg_logprobs'] = results['rl_avg_logprobs']
+      if FLAGS.rl_training:
+        printer_helper['sampled_r'] = np.mean(results['sampled_sentence_r_values'])
+        printer_helper['greedy_r'] = np.mean(results['greedy_sentence_r_values'])
+        printer_helper['r_diff'] = printer_helper['sampled_r'] - printer_helper['greedy_r']
+      if FLAGS.ac_training:
         printer_helper['dqn_loss'] = np.mean(self.avg_dqn_loss) if len(self.avg_dqn_loss)>0 else 0
 
       for (k,v) in printer_helper.items():
@@ -478,13 +477,6 @@ class Seq2Seq(object):
       tf.logging.info("Caught keyboard interrupt on worker. Stopping supervisor...")
       self.sv.stop()
       self.dqn_sv.stop()
-      '''
-      self.dqn_trainer_alive = False
-      # dumping the replay buffer content
-      tf.logging.info("Dumping Replay Buffer to file: {}...".format(replaybuffer_pcl_path))
-      pickle.dump(self.replay_buffer, open(replaybuffer_pcl_path, "wb"))
-      tf.logging.info("Replay Buffer dumped to file: {}...".format(replaybuffer_pcl_path))
-      '''
 
   def watch_threads(self):
     """Watch example queue and batch queue threads and restart if dead."""
@@ -508,7 +500,7 @@ class Seq2Seq(object):
     bestmodel_save_path = os.path.join(eval_dir, 'bestmodel') # this is where checkpoints of best models are saved
     summary_writer = tf.summary.FileWriter(eval_dir)
 
-    if FLAGS.rl_training:
+    if FLAGS.ac_training:
       tf.logging.info('DDQN building graph')
       t1 = time.time()
       dqn_graph = tf.Graph()
@@ -518,17 +510,16 @@ class Seq2Seq(object):
         self.dqn_target.build_graph() # build dqn target graph
         tf.logging.info('building target network took {} seconds'.format(time.time()-t1))
         dqn_sess = tf.Session(config=util.get_config())
+      dqn_train_step = 0
+      replay_buffer = ReplayBuffer(self.dqn_hps)
 
     running_avg_loss = 0 # the eval job keeps a smoother, running average loss to tell it when to implement early stopping
     best_loss = restore_best_eval_model()  # will hold the best loss achieved so far
     train_step = 0
-    if FLAGS.rl_training:
-      dqn_train_step = 0
-      replay_buffer = ReplayBuffer(self.dqn_hps)
 
     while True:
       _ = util.load_ckpt(saver, sess) # load a new checkpoint
-      if FLAGS.rl_training:
+      if FLAGS.ac_training:
         _ = util.load_dqn_ckpt(dqn_saver, dqn_sess) # load a new checkpoint
       processed_batch = 0
       avg_losses = []
@@ -537,9 +528,9 @@ class Seq2Seq(object):
       while processed_batch < 100*FLAGS.batch_size:
         processed_batch += FLAGS.batch_size
         batch = self.batcher.next_batch() # get the next batch
-        if FLAGS.rl_training:
+        if FLAGS.ac_training:
           transitions = self.model.collect_dqn_transitions(sess, batch, train_step, batch.max_art_oovs) # len(batch_size * k * max_dec_steps)
-          tf.logging.info('advantage values collection time: {}'.format(time.time()-t0))
+          tf.logging.info('Q values collection time: {}'.format(time.time()-t0))
           with dqn_graph.as_default():
             # if using true Q-value to train DQN network,
             # we do this as the pre-training for the DQN network to get better estimates
@@ -593,7 +584,7 @@ class Seq2Seq(object):
             printer_helper['rl_cov_total_loss']= results['reinforce_cov_total_loss']
           else:
             printer_helper['pointer_cov_total_loss'] = results['pointer_cov_total_loss']
-        if FLAGS.rl_training:
+        if FLAGS.rl_training or FLAGS.ac_training:
           printer_helper['shared_loss'] = results['shared_loss']
           printer_helper['rl_loss'] = results['rl_loss']
           printer_helper['rl_avg_logprobs'] = results['rl_avg_logprobs']
@@ -668,7 +659,7 @@ class Seq2Seq(object):
     #'sampled_greedy_flag', 
     'gamma', 'eta', 
     'fixed_eta', 'reward_function', 'intradecoder', 
-    'use_temporal_attention', 'rl_training', 'matrix_attention', 'calculate_true_q',
+    'use_temporal_attention', 'ac_training','rl_training', 'matrix_attention', 'calculate_true_q',
     'enc_hidden_dim', 'dec_hidden_dim', 'k', 
     'scheduled_sampling', 'sampling_probability','fixed_sampling_probability',
     'alpha', 'hard_argmax', 'greedy_scheduled_sampling',
@@ -681,10 +672,10 @@ class Seq2Seq(object):
     for key,val in flags.iteritems(): # for each flag
       if key in hparam_list: # if it's in the list
         hps_dict[key] = val # add it to the dict
-    hps_dict.update({'dqn_input_feature_len':(FLAGS.dec_hidden_dim)})
-    #hps_dict.update({'dqn_input_feature_len':(FLAGS.dec_hidden_dim+FLAGS.max_dec_steps)}) # TODO: more test on this, if wanna use time as a categorical feature
+    if FLAGS.ac_training:
+      hps_dict.update({'dqn_input_feature_len':(FLAGS.dec_hidden_dim)})
     self.hps = namedtuple("HParams", hps_dict.keys())(**hps_dict)
-    if FLAGS.rl_training:
+    if FLAGS.ac_training:
       hparam_list = ['lr', 'dqn_gpu_num', 
       'dqn_layers', 
       'dqn_replay_buffer_size', 
@@ -700,7 +691,6 @@ class Seq2Seq(object):
         if key in hparam_list: # if it's in the list
           hps_dict[key] = val # add it to the dict
       hps_dict.update({'dqn_input_feature_len':(FLAGS.dec_hidden_dim)})
-      #hps_dict.update({'dqn_input_feature_len':(FLAGS.dec_hidden_dim+FLAGS.max_dec_steps)})
       hps_dict.update({'vocab_size':self.vocab.size()})
       self.dqn_hps = namedtuple("HParams", hps_dict.keys())(**hps_dict)
 
@@ -712,13 +702,13 @@ class Seq2Seq(object):
     if self.hps.mode == 'train':
       print "creating model..."
       self.model = SummarizationModel(self.hps, self.vocab)
-      if FLAGS.rl_training:
+      if FLAGS.ac_training:
         self.dqn = DQN(self.dqn_hps,'current')
         self.dqn_target = DQN(self.dqn_hps,'target')
       self.setup_training()
     elif self.hps.mode == 'eval':
       self.model = SummarizationModel(self.hps, self.vocab)
-      if FLAGS.rl_training:
+      if FLAGS.ac_training:
         self.dqn = DQN(self.dqn_hps,'current')
         self.dqn_target = DQN(self.dqn_hps,'target')
       self.run_eval()
@@ -726,7 +716,7 @@ class Seq2Seq(object):
       decode_model_hps = self.hps  # This will be the hyperparameters for the decoder model
       decode_model_hps = self.hps._replace(max_dec_steps=1) # The model is configured with max_dec_steps=1 because we only ever run one step of the decoder at a time (to do beam search). Note that the batcher is initialized with max_dec_steps equal to e.g. 100 because the batches need to contain the full summaries
       model = SummarizationModel(decode_model_hps, self.vocab)
-      if FLAGS.rl_training:
+      if FLAGS.ac_training:
         dqn_target = DQN(self.dqn_hps,'target')
       else:
         dqn_target = None

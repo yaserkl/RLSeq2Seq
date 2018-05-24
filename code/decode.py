@@ -49,7 +49,7 @@ class BeamSearchDecoder(object):
     self._saver = tf.train.Saver() # we use this to load checkpoints for decoding
     self._sess = tf.Session(config=util.get_config())
 
-    if FLAGS.rl_training:
+    if FLAGS.ac_training:
       self._dqn = dqn
       self._model.build_graph()
       self._dqn_graph = tf.Graph()
@@ -103,7 +103,7 @@ class BeamSearchDecoder(object):
       abstract_withunks = data.show_abs_oovs(original_abstract, self._vocab, (batch.art_oovs[0] if FLAGS.pointer_gen else None)) # string
 
       # Run beam search to get best Hypothesis
-      if FLAGS.rl_training:
+      if FLAGS.ac_training:
         best_hyp = beam_search.run_beam_search(self._sess, self._model, self._vocab, batch, self._dqn, self._dqn_sess, self._dqn_graph)
       else:
         best_hyp = beam_search.run_beam_search(self._sess, self._model, self._vocab, batch)

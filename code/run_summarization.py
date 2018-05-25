@@ -722,7 +722,7 @@ class Seq2Seq(object):
         dqn_target = DQN(self.dqn_hps,'target')
       else:
         dqn_target = None
-      decoder = BeamSearchDecoder(model, self.batcher, self.vocab, dqn_target = dqn_target)
+      decoder = BeamSearchDecoder(model, self.batcher, self.vocab, dqn = dqn_target)
       decoder.decode() # decode indefinitely (unless single_pass=True, in which case deocde the dataset exactly once)
     else:
       raise ValueError("The 'mode' flag must be one of train/eval/decode")

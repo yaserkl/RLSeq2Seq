@@ -1,2 +1,6 @@
 PyYAML == 3.12
-numpy == 1.12.1
+tensorflow-gpu == 1.4
+spacy
+scikit-learn
+nltk
+pyrouge

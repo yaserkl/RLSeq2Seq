@@ -39,7 +39,7 @@ Table of Contents
 Motivation
 ============
 
-In recent years, text summarization moved from traditional bag of word models to more advanced methods based on Recurrent Neural Networks (RNN). The underlying framework of all these models are usually a deep neural network which contains an encoder module and a decoder module. The encoder processes the input data and a decoder receive the output of the encoder and generates the final output. Although simply using an encoder/decoder framework would, most of the time, produce better results than traditional methods on text summarization, researchers proposed additional improvements over these models by using attention-based models, pointer-generation models, and self-attention models. However, all these models suffer from a common problem known as exposure bias. In this work, we first study various solutions suggested for avoiding exposure bias and show how these solutions perform on abstractive text summarization and finally propose our solution, SoftE2E, that reaches state-of-the-art result on CNN/Daily Mail dataset.
+In recent years, text summarization moved from the traditional bag of word models to more advanced methods based on Recurrent Neural Networks (RNN). The underlying framework of all these models is usually a deep neural network which contains an encoder module and a decoder module. The encoder processes the input data and a decoder receive the output of the encoder and generate the final output. Although simply using an encoder/decoder framework would, most of the time, produce better results than traditional methods on text summarization, researchers proposed additional improvements over these models by using attention-based models, pointer-generation models, and self-attention models. However, all these models suffer from a common problem known as exposure bias. In this work, we first study various solutions suggested for avoiding exposure bias and show how these solutions perform on abstractive text summarization and finally propose our solution, SoftE2E, that reaches the state-of-the-art result on CNN/Daily Mail dataset.
 
 ---------------------------------------------------------------------------
 
@@ -89,15 +89,15 @@ pre-process this dataset and newsroom dataset.
 Please refer to `this link <code/helper>`_ to access them.
 
 We saw a large improvement on the ROUGE measure by using our processed version of these datasets
-in the summarization results, therefore, we strongly suggest to use these pre-processed files for
-all the trainings.
+in the summarization results, therefore, we strongly suggest using these pre-processed files for
+all the training.
 
 ---------------------------------------------------------------------------
 
 ====================
 Running Experiments
 ====================
-This code is a general framework for a variety of different modes that supporst the following features:
+This code is a general framework for a variety of different modes that supports the following features:
 
 1. Scheduled Sampling, Soft-Scheduled Sampling, and End2EndBackProp.
 2. Policy-Gradient w. Self-Critic learning and temporal attention and intra-decoder attention:
@@ -165,7 +165,7 @@ Pre-Training using only MLE loss with intradecoder attention and temporal attent
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Evaluation the pre-trained model on validation data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Here, we use a different GPU for evalation, but we can use the same GPU if we decrease the number of batches. In our implementation, we use a batch size of 8 for evaluation but for each eval step, we iterate over the validation dataset 100 times. This is similar to finding the evaluation error on a batch size of 800. This will help to decrease the memory required by the evaluation process and provide options for running both training and eval on one GPU.
+Here, we use a different GPU for evaluation, but we can use the same GPU if we decrease the number of batches. In our implementation, we use a batch size of 8 for evaluation but for each eval step, we iterate over the validation dataset 100 times. This is similar to finding the evaluation error on a batch size of 800. This will help to decrease the memory required by the evaluation process and provide options for running both training and eval on one GPU.
 
 .. code:: bash
 
@@ -184,7 +184,7 @@ First, add required training parameter to the model:
     CUDA_VISIBLE_DEVICES=0 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=80 --max_iter=40000 --intradecoder=True --use_temporal_attention=True --eta=2.17599E-05 --rl_training=True --convert_to_reinforce_model=True
 
 
-Then, start running the model with MLE+RL training loss: 
+Then, start running the model with MLE+RL training loss:
 
 .. code:: bash
 
@@ -214,12 +214,12 @@ We use ROUGE as the evaluation metrics.
 ----------------------------------------------------
 Actor-Critic model through DDQN and Dueling network
 ----------------------------------------------------
-The general framework for Actor-Critic model is as follows:
+The general framework for the Actor-Critic model is as follows:
 
 .. image:: docs/_img/rlseq.png
     :target: docs/_img/rlseq.png
 
-In our impolementaion the Actor is the pointer-generator model and the Critic is a regression model that minimizes the Q-value estimation using Double Deep Q Network (DDQN). The code is implemented such that the DDQN training is on a different thread from the main thread and we collect experiences for this network asynchronously from the Actor model. Therefore, for each batch we collect (batch_size * max_dec_steps) states for the DDQN training. We implemented the `prioritized replay buffer <https://arxiv.org/abs/1511.05952>`_. and during DDQN training we always select our minibatches such that they contain experiences that have the best partial reward according to the ground-truth summary. We added an option of training DDQN based on true Q-estimation and offered a scheduled-sampling process for training this network. Please note that, training DDQN using true Q-estimation will significantly reduce the speed of training, due to collection of true Q-values. Therefore, we suggest to only activate this for a few iterations. As suggested by `Bahdanau et al <https://arxiv.org/pdf/1607.07086.pdf>`_. it is also good to use a fixed pre-trained Actor to pre-train the Critic model first and then start training both models, simultaneously. For instance, we can use the following set of codes to run a similar experience as `Bahdanau et al <https://arxiv.org/pdf/1607.07086.pdf>`_.:
+In our implementation, the Actor is the pointer-generator model and the Critic is a regression model that minimizes the Q-value estimation using Double Deep Q Network (DDQN). The code is implemented such that the DDQN training is on a different thread from the main thread and we collect experiences for this network asynchronously from the Actor model. Therefore, for each batch, we collect (batch_size * max_dec_steps) states for the DDQN training. We implemented the `prioritized replay buffer <https://arxiv.org/abs/1511.05952>`_. and during DDQN training we always select our mini batches such that they contain experiences that have the best partial reward according to the ground-truth summary. We added an option of training DDQN based on true Q-estimation and offered a scheduled-sampling process for training this network. Please note that training DDQN using true Q-estimation will significantly reduce the speed of training, due to the collection of true Q-values. Therefore, we suggest to only activate this for a few iterations. As suggested by `Bahdanau et al <https://arxiv.org/pdf/1607.07086.pdf>`_. it is also good to use a fixed pre-trained Actor to pre-train the Critic model first and then start training both models, simultaneously. For instance, we can use the following set of codes to run a similar experience as `Bahdanau et al <https://arxiv.org/pdf/1607.07086.pdf>`_.:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Pre-Training the Actor using only MLE loss
@@ -279,6 +279,8 @@ Decoding based on Actor and Critic estimation
 Citation
 ===============
 
+If you used this code please kindly cite the following paper:
+
 .. code:: bash
 
     @article{keneshloo2018deep,
@@ -293,4 +295,4 @@ Citation
 ===============
 Aknowledgement
 ===============
-Thanks `@atorfi <https://github.com/atorfi/>`_ for his help on preparing this documentation.
+Thanks `@astorfi <https://github.com/astorfi/>`_ for his help on preparing this documentation.

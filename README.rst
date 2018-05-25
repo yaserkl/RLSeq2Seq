@@ -16,7 +16,7 @@ RLSeq2Seq
 .. image:: https://img.shields.io/badge/arXiv-1805.09461-red.svg?style=flat
    :target: https://arxiv.org/abs/1805.09461
 
-The goal of this repository is ...
+NOTE: WE ARE CURRENTLY UPDATING THE DOCUMENTATIONS...
 
 
 #################
@@ -272,23 +272,29 @@ The general framework for the Actor-Critic model is as follows:
 
 In our implementation, the Actor is the pointer-generator model and the Critic is a regression model that minimizes the Q-value estimation using Double Deep Q Network (DDQN). The code is implemented such that the DDQN training is on a different thread from the main thread and we collect experiences for this network asynchronously from the Actor model. Therefore, for each batch, we collect (batch_size * max_dec_steps) states for the DDQN training. We implemented the `prioritized replay buffer <https://arxiv.org/abs/1511.05952>`_. and during DDQN training we always select our mini batches such that they contain experiences that have the best partial reward according to the ground-truth summary. We added an option of training DDQN based on true Q-estimation and offered a scheduled-sampling process for training this network. Please note that training DDQN using true Q-estimation will significantly reduce the speed of training, due to the collection of true Q-values. Therefore, we suggest to only activate this for a few iterations. As suggested by `Bahdanau et al <https://arxiv.org/pdf/1607.07086.pdf>`_. it is also good to use a fixed pre-trained Actor to pre-train the Critic model first and then start training both models, simultaneously. For instance, we can use the following set of codes to run a similar experience as `Bahdanau et al <https://arxiv.org/pdf/1607.07086.pdf>`_.:
 
- +----------------------------+---------+-------------------------------------------------------------------+
- | Parameter                  | Default | Description                                                       |
- +============================+=========+===================================================================+
- | ac_training         |  False  | whether to do scheduled sampling or not                           |
- +----------------------------+---------+-------------------------------------------------------------------+
- | sampling_probability       |    0    | epsilon value for choosing ground-truth or model output           |
- +----------------------------+---------+-------------------------------------------------------------------+
- | fixed_sampling_probability |  False  | Whether to use fixed sampling probability or adaptive             |
- +----------------------------+---------+-------------------------------------------------------------------+
- | hard_argmax                |  True   | Whether to use soft argmax or hard argmax                         |
- +----------------------------+---------+-------------------------------------------------------------------+
- | greedy_scheduled_sampling  |  False  | Whether to use greedy or sample for the output, True means greedy |
- +----------------------------+---------+-------------------------------------------------------------------+
- | E2EBackProp                |  False  | Whether to use E2EBackProp algorithm to solve exposure bias       |
- +----------------------------+---------+-------------------------------------------------------------------+
- | alpha                      |    1    | soft argmax argument                                              |
- +----------------------------+---------+-------------------------------------------------------------------+
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | Parameter                  |     Default     | Description                                                         |
+ +============================+=================+=====================================================================+
+ | ac_training                |      False      | Use Actor-Critic learning by DDQN.                                  |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | dqn_scheduled_sampling     |      False      | Whether to use scheduled sampling to use estimates of DQN model     |
+ |                            |                 | vs the actual Q-estimates values                                    |+----------------------------+-----------------+---------------------------------------------------------------------+
+ | intradecoder               |      False      | Use intradecoder attention or not                                   |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | use_temporal_attention     |      True       | Whether to use temporal attention or not                            |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | matrix_attention           |      False      | Use matrix attention, Eq. 2 in https://arxiv.org/pdf/1705.04304.pdf |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | eta                        |        0        | RL/MLE scaling factor, 1 means use RL loss, 0 means use MLE loss    |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | fixed_eta                  |      False      | Use fixed value for eta or adaptive based on global step            |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | gamma                      |       0.99      | RL reward discount factor                                           |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | reward_function            | rouge_l/f_score | Either bleu or one of the rouge measures                            |
+ |                            |                 | (rouge_1/f_score, rouge_2/f_score,rouge_l/f_score)                  |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ 
  
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Pre-Training the Actor using only MLE loss

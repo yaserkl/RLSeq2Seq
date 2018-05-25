@@ -85,7 +85,7 @@ tf.app.flags.DEFINE_string('reward_function', 'rouge_l/f_score', 'either bleu or
 
 # parameters of DDQN model
 tf.app.flags.DEFINE_boolean('ac_training', False, 'Use Actor-Critic learning by DDQN.')
-tf.app.flags.DEFINE_boolean('dqn_scheduled_sampling', False, 'whether to use scheduled sampling to use estimates of dqn model vs the actual q-estimates values')
+tf.app.flags.DEFINE_boolean('dqn_scheduled_sampling', False, 'Whether to use scheduled sampling to use estimates of dqn model vs the actual q-estimates values')
 tf.app.flags.DEFINE_string('dqn_layers', '512,256,128', 'DQN dense hidden layer size, will create three dense layers with 512, 256, and 128 size')
 tf.app.flags.DEFINE_integer('dqn_replay_buffer_size', 100000, 'size of the replay buffer')
 tf.app.flags.DEFINE_integer('dqn_batch_size', 100, 'batch_size for training the dqn model')

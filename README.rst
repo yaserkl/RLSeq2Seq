@@ -277,22 +277,33 @@ In our implementation, the Actor is the pointer-generator model and the Critic i
  +============================+=================+=====================================================================+
  | ac_training                |      False      | Use Actor-Critic learning by DDQN.                                  |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- | dqn_scheduled_sampling     |      False      | Whether to use scheduled sampling to use estimates of DQN model     |
+ | dqn_scheduled_sampling     |      False      | Whether to use scheduled sampling to use estimates of DDQN model    |
  |                            |                 | vs the actual Q-estimates values                                    |+----------------------------+-----------------+---------------------------------------------------------------------+
- | intradecoder               |      False      | Use intradecoder attention or not                                   |
+ | dqn_layers                 |   512,256,128   | DDQN dense hidden layer size.                                       |
+ |                            |                 | It will create three dense layers with 512, 256, and 128 size       |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- | use_temporal_attention     |      True       | Whether to use temporal attention or not                            |
+ | dqn_replay_buffer_size     |     100000      | Size of the replay buffer                                           |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- | matrix_attention           |      False      | Use matrix attention, Eq. 2 in https://arxiv.org/pdf/1705.04304.pdf |
+ | dqn_batch_size             |       100       | Batch size for training the DDQN model                              |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- | eta                        |        0        | RL/MLE scaling factor, 1 means use RL loss, 0 means use MLE loss    |
+ | dqn_target_update          |      10000      | Update target Q network every 10000 steps                           |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- | fixed_eta                  |      False      | Use fixed value for eta or adaptive based on global step            |
+ | dqn_sleep_time             |        2        | Train DDQN model every 2 seconds                                    |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- | gamma                      |       0.99      | RL reward discount factor                                           |
+ | dqn_gpu_num                |        1        | GPU number to train the DDQN                                        |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- | reward_function            | rouge_l/f_score | Either bleu or one of the rouge measures                            |
- |                            |                 | (rouge_1/f_score, rouge_2/f_score,rouge_l/f_score)                  |
+ | dueling_net                |       True      | Whether to use Duelling Network to train the model                  |
+ |                            |                 | https://arxiv.org/pdf/1511.06581.pdf                                |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | dqn_polyak_averaging       |       True      | Whether to use Polyak averaging to update the target Q network      | 
+ |                            |                 | parameters: Psi^{\prime} = (tau * Psi^{\prime})+ (1-tau)*Psi        |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | calculate_true_q           |      False      | Whether to use true Q-values to train DDQN                          |
+ |                            |                 | or use DDQN's estimates to train it                                 |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | dqn_pretrain               |      False      | Pretrain the DDQN network with fixed Actor model                    |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
+ | dqn_pretrain_steps         |      10000      | Number of steps to pre-train the DDQN                               |
  +----------------------------+-----------------+---------------------------------------------------------------------+
  
  

@@ -87,16 +87,16 @@ tf.app.flags.DEFINE_string('reward_function', 'rouge_l/f_score', 'either bleu or
 tf.app.flags.DEFINE_boolean('ac_training', False, 'Use Actor-Critic learning by DDQN.')
 tf.app.flags.DEFINE_boolean('dqn_scheduled_sampling', False, 'Whether to use scheduled sampling to use estimates of dqn model vs the actual q-estimates values')
 tf.app.flags.DEFINE_string('dqn_layers', '512,256,128', 'DQN dense hidden layer size, will create three dense layers with 512, 256, and 128 size')
-tf.app.flags.DEFINE_integer('dqn_replay_buffer_size', 100000, 'size of the replay buffer')
-tf.app.flags.DEFINE_integer('dqn_batch_size', 100, 'batch_size for training the dqn model')
-tf.app.flags.DEFINE_integer('dqn_target_update', 10000, 'update target every 10000 steps')
-tf.app.flags.DEFINE_integer('dqn_sleep_time', 2, 'train DQN model every 2 seconds')
-tf.app.flags.DEFINE_integer('dqn_gpu_num', 0, 'gpu number to train the DDQN')
-tf.app.flags.DEFINE_boolean('dueling_net', True, 'whether to use duelling network to train the model') # https://arxiv.org/pdf/1511.06581.pdf
-tf.app.flags.DEFINE_boolean('dqn_polyak_averaging', True, 'whether to use polyak averaging to update the target network parameters')
-tf.app.flags.DEFINE_boolean('calculate_true_q', False, "whether to use true Q-values to train DQN or use DQN's estimates to train it")
+tf.app.flags.DEFINE_integer('dqn_replay_buffer_size', 100000, 'Size of the replay buffer')
+tf.app.flags.DEFINE_integer('dqn_batch_size', 100, 'Batch size for training the DDQN model')
+tf.app.flags.DEFINE_integer('dqn_target_update', 10000, 'Update target Q network every 10000 steps')
+tf.app.flags.DEFINE_integer('dqn_sleep_time', 2, 'Train DDQN model every 2 seconds')
+tf.app.flags.DEFINE_integer('dqn_gpu_num', 0, 'GPU number to train the DDQN')
+tf.app.flags.DEFINE_boolean('dueling_net', True, 'Whether to use Duelling Network to train the model') # https://arxiv.org/pdf/1511.06581.pdf
+tf.app.flags.DEFINE_boolean('dqn_polyak_averaging', True, 'Whether to use polyak averaging to update the target network parameters')
+tf.app.flags.DEFINE_boolean('calculate_true_q', False, "Whether to use true Q-values to train DQN or use DQN's estimates to train it")
 tf.app.flags.DEFINE_boolean('dqn_pretrain', False, "Pretrain the DDQN network with fixed Actor model")
-tf.app.flags.DEFINE_integer('dqn_pretrain_steps', 10000, 'number of steps to pre-train the DDQN')
+tf.app.flags.DEFINE_integer('dqn_pretrain_steps', 10000, 'Number of steps to pre-train the DDQN')
 
 #scheduled sampling parameters, https://arxiv.org/pdf/1506.03099.pdf
 # At each time step t and for each sequence in the batch, we get the input to next decoding step by either

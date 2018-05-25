@@ -107,7 +107,7 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
 
   steps = 0
   if FLAGS.intradecoder:
-    decoder_outputs = [np.zeros((FLAGS.beam_size,FLAGS.hidden_dim))] # using this to calculate the intradecoder attention during decoding, feeding zero in the beginning
+    decoder_outputs = [np.zeros((FLAGS.beam_size,FLAGS.dec_hidden_dim))] # using this to calculate the intradecoder attention during decoding, feeding zero in the beginning
   else:
     decoder_outputs = []
   if FLAGS.use_temporal_attention:

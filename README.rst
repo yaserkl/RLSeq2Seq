@@ -62,6 +62,8 @@ Table of Contents
 ..  Subsection 1.1.1 Title
 ..  ~~~~~~~~~~~~~~~~~~~~~~
 
+.. image:: docs/_img/rlseq.png
+    :target: docs/_img/rlseq.png
 
 ============
 Motivation

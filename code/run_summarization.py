@@ -445,7 +445,7 @@ class Seq2Seq(object):
         dqn_batch = self.replay_buffer.next_batch()
         if dqn_batch is None:
           tf.logging.info('replay buffer not loaded enough yet...go get a pizza')
-          time.sleep(FLAGS.dqn_sleep_time)
+          time.sleep(60)
           continue
         dqn_results = self.dqn.run_train_steps(self.dqn_sess, dqn_batch)
         dqn_target_results = self.dqn_target.run_test_steps(self.dqn_sess, x=dqn_batch._x, y=dqn_batch._y, return_loss=True)

@@ -13,6 +13,8 @@ RLSeq2Seq
       :target: https://github.com/yaserkl/RLSeq2Seq/graphs/contributors
 .. image:: https://img.shields.io/github/issues/Naereen/StrapDown.js.svg
       :target: https://github.com/yaserkl/RLSeq2Seq/issues
+.. image:: https://img.shields.io/badge/arXiv-1805.09461-red.svg?style=flat
+   :target: https://arxiv.org/abs/1805.09461
 
 The goal of this repository is ...
 

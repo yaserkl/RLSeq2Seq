@@ -1,5 +1,5 @@
 import tensorflow as tf
-import tensorlayer as tl
+#import tensorlayer as tl
 import numpy as np
 
 class DQN(object):
@@ -30,7 +30,7 @@ class DQN(object):
         feed_dict[self._x] = batch._x
         feed_dict[self._y] = batch._y
         return feed_dict
-
+    '''
     def _add_tl_layers(self):
         h = tl.layers.InputLayer(self._x, name='{}_input_layer'.format(self._name_variable))
         for i, layer in enumerate(self._hps.dqn_layers.split(',')):
@@ -44,7 +44,7 @@ class DQN(object):
             self.output = value_extended + normalized_al
         else:
             self.output = self.advantage_layer.outputs
-
+    '''
     def _add_tf_layers(self):
         h = tf.layers.dense(self._x, units = self._hps.dqn_input_feature_len, activation=tf.nn.relu, name='{}_input_layer'.format(self._name_variable))
         for i, layer in enumerate(self._hps.dqn_layers.split(',')):

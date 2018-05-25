@@ -125,8 +125,6 @@ This code is a general framework for a variety of different modes that supports 
  +------------+------------+-----------+
 
 
----------------------------------------------------------------------------
-
 -------------------------------------------------------------------------------------------
 Scheduled Sampling, Soft-Scheduled Sampling, and End2EndBackProp
 -------------------------------------------------------------------------------------------
@@ -224,8 +222,6 @@ We use ROUGE as the evaluation metrics.
     CUDA_VISIBLE_DEVICES=0 python run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --rl_training=True --intradecoder=True --use_temporal_attention=True --single_pass=1 --beam_size=4 --decode_after=0
 
 
----------------------------------------------------------------------------
-
 
 ----------------------------------------------------
 Actor-Critic model through DDQN and Dueling network
@@ -290,6 +286,8 @@ Decoding based on Actor and Critic estimation
 
     CUDA_VISIBLE_DEVICES=0 python run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --dqn_gpu_num=1 --single_pass=1 --beam_size=4
 
+
+---------------------------------------------------------------------------
 
 ===============
 Citation

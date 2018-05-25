@@ -203,4 +203,4 @@ Citation
 ===============
 Aknowledgement
 ===============
-Thanks @atorfi for his help on preparing this documentation.
+Thanks `@atorfi <https://github.com/atorfi/>`_ for his help on preparing this documentation.

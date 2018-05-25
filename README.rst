@@ -146,7 +146,7 @@ Scheduled Sampling using Hard-Argmax and Greedy selection (`Bengio et al <https:
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-hardargmax-greedy --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=9.28421E-06 --hard_argmax=True --greedy_scheduled_sampling=True
+    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-hardargmax-greedy --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=2.5E-05 --hard_argmax=True --greedy_scheduled_sampling=True
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Scheduled Sampling using Soft-Argmax and Sampling selection (`Goyal et al <https://arxiv.org/abs/1506.03099>`_.):
@@ -154,7 +154,7 @@ Scheduled Sampling using Soft-Argmax and Sampling selection (`Goyal et al <https
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-softargmax-sampling --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=9.28421E-06 --hard_argmax=False --greedy_scheduled_sampling=False --alpha=10
+    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-softargmax-sampling --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=2.5E-05 --hard_argmax=False --greedy_scheduled_sampling=False --alpha=10
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -163,7 +163,7 @@ End2EndBackProp (`Ranzato et al <https://arxiv.org/abs/1511.06732>`_.):
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-end2endbackprop --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=9.28421E-06 --hard_argmax=True --E2EBackProp=True --k=4
+    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-end2endbackprop --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=2.5E-05 --hard_argmax=True --E2EBackProp=True --k=4
 
 ---------------------------------------------------------------------------
 

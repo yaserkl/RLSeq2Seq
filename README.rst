@@ -293,7 +293,7 @@ In our implementation, the Actor is the pointer-generator model and the Critic i
  |                            |                 | https://arxiv.org/pdf/1511.06581.pdf                                |
  +----------------------------+-----------------+---------------------------------------------------------------------+
  | dqn_polyak_averaging       |       True      | Whether to use Polyak averaging to update the target Q network      | 
- |                            |                 | parameters: Psi^{\prime} = (tau * Psi^{\prime})+ (1-tau)*Psi        |
+ |                            |                 | parameters:                                                         |
  +----------------------------+-----------------+---------------------------------------------------------------------+
  | calculate_true_q           |      False      | Whether to use true Q-values to train DDQN                          |
  |                            |                 | or use DDQN's estimates to train it                                 |

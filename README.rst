@@ -16,7 +16,32 @@ RLSeq2Seq
 .. image:: https://img.shields.io/badge/arXiv-1805.09461-red.svg?style=flat
    :target: https://arxiv.org/abs/1805.09461
 
-NOTE: WE ARE CURRENTLY UPDATING THE DOCUMENTATIONS...
+   This repository contains the code developed by TensorFlow_ for the following paper:
+
+
+   | `Deep Reinforcement Learning For Sequence to Sequence Models`_,
+   | by: `Yaser Keneshloo`_, `Tian Shi`_, `Chandan K. Reddy`_ and `Naren Ramakrishnan`_
+
+
+   .. _Deep Reinforcement Learning For Sequence to Sequence Models: https://arxiv.org/abs/1805.09461
+   .. _TensorFlow: https://www.tensorflow.org/
+   .. _Yaser Keneshloo: https://github.com/yaserkl
+   .. _Tian Shi: http://life-tp.com/Tian_Shi/
+   .. _Chandan K. Reddy: http://people.cs.vt.edu/~reddy/
+   .. _Naren Ramakrishnan: http://people.cs.vt.edu/naren/
+
+
+   If you used this code, please kindly consider citing the following paper:
+
+   .. code:: shell
+
+     @article{keneshloo2018deep,
+       title={Deep Reinforcement Learning For Sequence to Sequence Models},
+       author={Keneshloo, Yaser and Shi, Tian and Ramakrishnan, Naren and Reddy, Chandan K.},
+       journal={arXiv preprint arXiv:1805.09461},
+       year={2018}
+     }
+
 
 
 #################
@@ -113,7 +138,7 @@ This code is a general framework for a variety of different modes that supports 
    C. `An ActorCritic Algorithm for Sequence Prediction <https://arxiv.org/abs/1607.07086>`_
 
 
- 
+
 ---------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------------------
@@ -138,8 +163,8 @@ Scheduled Sampling, Soft-Scheduled Sampling, and End2EndBackProp
  +----------------------------+---------+-------------------------------------------------------------------+
  | alpha                      |    1    | soft argmax argument                                              |
  +----------------------------+---------+-------------------------------------------------------------------+
- 
- 
+
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Scheduled Sampling using Hard-Argmax and Greedy selection (`Bengio et al <https://arxiv.org/abs/1506.03099>`_.):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -197,7 +222,7 @@ Policy-Gradient w. Self-Critic learning and temporal attention and intra-decoder
  | reward_function            | rouge_l/f_score | Either bleu or one of the rouge measures                            |
  |                            |                 | (rouge_1/f_score, rouge_2/f_score,rouge_l/f_score)                  |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- 
+
 `Paulus et al <https://arxiv.org/abs/1705.04304>`_. proposed a self-critic policy-gradient model for abstractive text summarization. The following figure represents how this method works and how we implemented this method:
 
 .. image:: docs/_img/selfcritic.png
@@ -298,14 +323,14 @@ Actor-Critic model through DDQN and Dueling network
  +----------------------------+-----------------+---------------------------------------------------------------------+
  | dqn_pretrain_steps         |      10000      | Number of steps to pre-train the DDQN                               |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- 
+
 The general framework for the Actor-Critic model is as follows:
 
 .. image:: docs/_img/rlseq.png
     :target: docs/_img/rlseq.png
 
 In our implementation, the Actor is the pointer-generator model and the Critic is a regression model that minimizes the Q-value estimation using Double Deep Q Network (DDQN). The code is implemented such that the DDQN training is on a different thread from the main thread and we collect experiences for this network asynchronously from the Actor model. Therefore, for each batch, we collect (batch_size * max_dec_steps) states for the DDQN training. We implemented the `prioritized replay buffer <https://arxiv.org/abs/1511.05952>`_. and during DDQN training we always select our mini batches such that they contain experiences that have the best partial reward according to the ground-truth summary. We added an option of training DDQN based on true Q-estimation and offered a scheduled-sampling process for training this network. Please note that training DDQN using true Q-estimation will significantly reduce the speed of training, due to the collection of true Q-values. Therefore, we suggest to only activate this for a few iterations. As suggested by `Bahdanau et al <https://arxiv.org/pdf/1607.07086.pdf>`_. it is also good to use a fixed pre-trained Actor to pre-train the Critic model first and then start training both models, simultaneously. For instance, we can use the following set of codes to run a similar experience as `Bahdanau et al <https://arxiv.org/pdf/1607.07086.pdf>`_.:
- 
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Pre-Training the Actor using only MLE loss
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

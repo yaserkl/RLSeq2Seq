@@ -194,7 +194,7 @@ class SummarizationModel(object):
       cell, 
       embedding, 
       self._sampling_probability if FLAGS.scheduled_sampling else 0, 
-      self._alpha,
+      self._alpha if FLAGS.E2EBackProp else 0,
       self._vocab.word2id(data.UNKNOWN_TOKEN), 
       initial_state_attention=(hps.mode=="decode"), 
       pointer_gen=hps.pointer_gen, 

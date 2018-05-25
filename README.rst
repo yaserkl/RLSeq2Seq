@@ -41,9 +41,6 @@ Motivation
 
 In recent years, text summarization moved from traditional bag of word models to more advanced methods based on Recurrent Neural Networks (RNN). The underlying framework of all these models are usually a deep neural network which contains an encoder module and a decoder module. The encoder processes the input data and a decoder receive the output of the encoder and generates the final output. Although simply using an encoder/decoder framework would, most of the time, produce better results than traditional methods on text summarization, researchers proposed additional improvements over these models by using attention-based models, pointer-generation models, and self-attention models. However, all these models suffer from a common problem known as exposure bias. In this work, we first study various solutions suggested for avoiding exposure bias and show how these solutions perform on abstractive text summarization and finally propose our solution, SoftE2E, that reaches state-of-the-art result on CNN/Daily Mail dataset.
 
-.. image:: docs/_img/seq2seq.png
-    :target: docs/_img/seq2seq.png
-
 ---------------------------------------------------------------------------
 
 ====================

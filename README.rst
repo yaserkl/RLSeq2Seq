@@ -320,7 +320,7 @@ We can use Dueling network to train the DDQN by activating ``dueling_net`` flag.
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=21000 --convert_to_reinforce_model=True --ac_training=True --dueling_net=True --dqn_polyak_averaging=True
+    CUDA_VISIBLE_DEVICES=0,1 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=21000 --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --convert_to_reinforce_model=True --dqn_gpu_num=1
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -330,7 +330,7 @@ Use ``dqn_pretrain_steps`` flag to set how many iteration you want to pre-train 
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --ac_training=True --dqn_pretrain=True --dueling_net=True --dqn_polyak_averaging=True
+    CUDA_VISIBLE_DEVICES=0,1 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --ac_training=True --dqn_pretrain=True --dueling_net=True --dqn_polyak_averaging=True --dqn_gpu_num=1
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

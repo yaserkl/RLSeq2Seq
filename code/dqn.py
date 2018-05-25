@@ -60,7 +60,7 @@ class DQN(object):
             self.output = self.advantage_layer
 
     def _add_train_op(self):
-        self.loss = tl.cost.mean_squared_error(self.output, self._y)
+        self.loss = tf.losses.mean_squared_error(labels = self._y, predictions = self.output)
 
         tvars = tf.trainable_variables()
         gradients = tf.gradients(self.loss, tvars, aggregation_method=tf.AggregationMethod.EXPERIMENTAL_TREE)

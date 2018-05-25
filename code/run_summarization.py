@@ -441,7 +441,7 @@ class Seq2Seq(object):
       self.summary_writer.add_summary(summaries, self.train_step) # write the summaries
       if self.train_step % 100 == 0: # flush the summary writer every so often
         self.summary_writer.flush()
-      if FLAGS.rl_training:
+      if FLAGS.ac_training:
         self.dqn_summary_writer.flush()
       if self.train_step > FLAGS.max_iter: break
 

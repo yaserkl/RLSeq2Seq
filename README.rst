@@ -109,19 +109,20 @@ This code is a general framework for a variety of different modes that supports 
    B. `Dueling Network Architectures for Deep Reinforcement Learning <https://arxiv.org/abs/1511.06581>`_
    C. `An ActorCritic Algorithm for Sequence Prediction <https://arxiv.org/abs/1607.07086>`_
 
-   +------------+------------+-----------+
-   | Header 1   | Header 2   | Header 3  |
-   +============+============+===========+
-   | body row 1 | column 2   | column 3  |
-   +------------+------------+-----------+
-   | body row 2 | Cells may span columns.|
-   +------------+------------+-----------+
-   | body row 3 | Cells may  | - Cells   |
-   +------------+ span rows. | - contain |
-   | body row 4 |            | - blocks. |
-   +------------+------------+-----------+
 
-   
+ +------------+------------+-----------+
+ | Header 1   | Header 2   | Header 3  |
+ +============+============+===========+
+ | body row 1 | column 2   | column 3  |
+ +------------+------------+-----------+
+ | body row 2 | Cells may span columns.|
+ +------------+------------+-----------+
+ | body row 3 | Cells may  | - Cells   |
+ +------------+ span rows. | - contain |
+ | body row 4 |            | - blocks. |
+ +------------+------------+-----------+
+
+
 ---------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------------------

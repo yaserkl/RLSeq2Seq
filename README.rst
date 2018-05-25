@@ -81,16 +81,11 @@ all the trainings.
 ---------------------------------------------------------------------------
 
 ====================
-Code Implementation
+Requirements
 ====================
-
------------------
-Dependencies
------------------
-
-~~~~~~~~~~~~~~~~~~~
+-------------
 Python
-~~~~~~~~~~~~~~~~~~~
+-------------
 
 Python requirements can be installed as follows:
 
@@ -98,18 +93,20 @@ Python requirements can be installed as follows:
 
     pip install -r python_requirements.txt
 
-~~~~~~~~~~~~~~~~~~~
+-------------
 TensorFlow
-~~~~~~~~~~~~~~~~~~~
+-------------
 
   - Use Tensorflow 1.4
 
-~~~~~~~~~~~~~~~~~~~
+-------------
 GPU
-~~~~~~~~~~~~~~~~~~~
+-------------
 
   - CUDA 8
   - CUDNN 6
+
+---------------------------------------------------------------------------
 
 ====================
 Running Experiments
@@ -131,8 +128,39 @@ This code is a general framework for a variety of different modes that supporst 
 -------------------------------------------------------------------------------------------
 Policy-Gradient w. Self-Critic learning and temporal attention and intra-decoder attention
 -------------------------------------------------------------------------------------------
+`Bengio et al <https://arxiv.org/abs/1506.03099>`_. proposed the idea of scheduled sampling for avoiding exposure bias problem. Recently, `Goyal et al <https://arxiv.org/abs/1506.03099>`_. proposed a differentiable relaxtion of this method, by using soft-argmax rather hard-argmax, that solves the back-propagation error that exists in this model. Also, `Ranzato et al <https://arxiv.org/abs/1511.06732>`_. proposed another simple model called End2EndBackProp for avoiding exposure bias problem. To train a model based on each of these papers, we provide different flags as follows:
 
-`Paulus et al <https://arxiv.org/abs/1705.04304>`_, proposed a self-critic policy-gradient model for abstractive text summarization. The following figure represents how this method works and how we implemented this method:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Scheduled Sampling using Hard-Argmax and Greedy selection (`Bengio et al <https://arxiv.org/abs/1506.03099>`_.):
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: bash
+
+    CUDA_VISIBLE_DEVICES=0 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-hardargmax-greedy --batch_size=80 --max_iter=43083 --scheduled_sampling=True --sampling_probability=9.28421E-06 --hard_argmax=True --greedy_scheduled_sampling=True
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Scheduled Sampling using Soft-Argmax and Sampling selection (`Goyal et al <https://arxiv.org/abs/1506.03099>`_.):
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: bash
+
+    CUDA_VISIBLE_DEVICES=0 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-softargmax-sampling --batch_size=80 --max_iter=43083 --scheduled_sampling=True --sampling_probability=9.28421E-06 --hard_argmax=False --greedy_scheduled_sampling=False --alpha=10
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+End2EndBackProp (`Ranzato et al <https://arxiv.org/abs/1511.06732>`_.):
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: bash
+
+    CUDA_VISIBLE_DEVICES=0 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-end2endbackprop --batch_size=80 --max_iter=43083 --scheduled_sampling=True --sampling_probability=9.28421E-06 --hard_argmax=True --E2EBackProp=True --k=4
+
+
+-------------------------------------------------------------------------------------------
+Policy-Gradient w. Self-Critic learning and temporal attention and intra-decoder attention
+-------------------------------------------------------------------------------------------
+
+`Paulus et al <https://arxiv.org/abs/1705.04304>`_. proposed a self-critic policy-gradient model for abstractive text summarization. The following figure represents how this method works and how we implemented this method:
 
 .. image:: docs/_img/selfcritic.png
     :target: docs/_img/selfcritic.png

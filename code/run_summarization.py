@@ -95,8 +95,9 @@ tf.app.flags.DEFINE_integer('dqn_sleep_time', 2, 'train DQN model every 2 second
 tf.app.flags.DEFINE_integer('dqn_gpu_num', 0, 'gpu number to train the DDQN')
 tf.app.flags.DEFINE_boolean('dueling_net', True, 'whether to use duelling network to train the model') # https://arxiv.org/pdf/1511.06581.pdf
 tf.app.flags.DEFINE_boolean('dqn_polyak_averaging', True, 'whether to use polyak averaging to update the target network parameters')
-tf.app.flags.DEFINE_boolean('calculate_true_q', True, "whether to use true Q-values to train DQN or use DQN's estimates to train it")
+tf.app.flags.DEFINE_boolean('calculate_true_q', False, "whether to use true Q-values to train DQN or use DQN's estimates to train it")
 tf.app.flags.DEFINE_boolean('dqn_pretrain', False, "Pretrain the DDQN network with fixed Actor model")
+tf.app.flags.DEFINE_integer('dqn_pretrain_steps', 10000, 'number of steps to pre-train the DDQN')
 
 #scheduled sampling parameters, https://arxiv.org/pdf/1506.03099.pdf
 # At each time step t and for each sequence in the batch, we get the input to next decoding step by either
@@ -448,6 +449,7 @@ class Seq2Seq(object):
   def dqn_training(self):
     try:
       while True:
+        if self.dqn_train_step == FLAGS.dqn_pretrain_steps: raise SystemExit()
         _t = time.time()
         self.avg_dqn_loss = []
         avg_dqn_target_loss = []

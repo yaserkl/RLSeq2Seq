@@ -76,12 +76,11 @@ tf.app.flags.DEFINE_boolean('pointer_gen', True, 'If True, use pointer-generator
 tf.app.flags.DEFINE_boolean('rl_training', False, 'Use policy-gradient training by collecting rewards at the end of sequence.')
 tf.app.flags.DEFINE_boolean('convert_to_reinforce_model', False, 'Convert a pointer model to a reinforce model. Turn this on and run in train mode. Your current training model will be copied to a new version (same name with _cov_init appended) that will be ready to run with coverage flag turned on, for the coverage training stage.')
 tf.app.flags.DEFINE_boolean('intradecoder', False, 'Use intradecoder attention or not')
-tf.app.flags.DEFINE_boolean('use_temporal_attention', False, 'whether to use temporal attention or not')
-tf.app.flags.DEFINE_boolean('matrix_attention', False, 'use matrix attention, eq 2 https://arxiv.org/pdf/1705.04304.pdf')
-tf.app.flags.DEFINE_float('eta', 0, 'rl_ml scaling factor, if 1 it only uses rl loss, if 0, it only uses pointer-generation loss')
-tf.app.flags.DEFINE_boolean('fixed_eta', False, 'use fixed value for eta or adaptive based on global step')
+tf.app.flags.DEFINE_boolean('use_temporal_attention', False, 'Whether to use temporal attention or not')
+tf.app.flags.DEFINE_boolean('matrix_attention', False, 'Use matrix attention, Eq. 2 https://arxiv.org/pdf/1705.04304.pdf')
+tf.app.flags.DEFINE_float('eta', 0, 'RL/MLE scaling factor, 1 means use RL loss, 0 means use MLE loss')
+tf.app.flags.DEFINE_boolean('fixed_eta', False, 'Use fixed value for eta or adaptive based on global step')
 tf.app.flags.DEFINE_float('gamma', 0.99, 'discount factor')
-tf.app.flags.DEFINE_integer('k', 1, 'number of samples')
 tf.app.flags.DEFINE_string('reward_function', 'rouge_l/f_score', 'either bleu or one of the rouge measures (rouge_1/f_score,rouge_2/f_score,rouge_l/f_score)')
 
 # parameters of DDQN model
@@ -114,6 +113,7 @@ tf.app.flags.DEFINE_boolean('hard_argmax', True, 'Whether to use soft argmax or 
 tf.app.flags.DEFINE_boolean('greedy_scheduled_sampling', False, 'Whether to use greedy approach or sample for the output, if True it uses greedy')
 tf.app.flags.DEFINE_boolean('E2EBackProp', False, 'Whether to use E2EBackProp algorithm to solve exposure bias')
 tf.app.flags.DEFINE_float('alpha', 1, 'soft argmax argument')
+tf.app.flags.DEFINE_integer('k', 1, 'number of samples')
 
 # Coverage hyperparameters
 tf.app.flags.DEFINE_boolean('coverage', False, 'Use coverage mechanism. Note, the experiments reported in the ACL paper train WITHOUT coverage until converged, and then train for a short phase WITH coverage afterwards. i.e. to reproduce the results in the ACL paper, turn this off for most of training then turn on for a short phase at the end.')

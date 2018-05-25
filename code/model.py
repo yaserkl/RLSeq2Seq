@@ -78,9 +78,8 @@ class SummarizationModel(object):
       self._greedy_sentence_r_values = tf.placeholder(tf.float32, [None], name='greedy_sentence_r_values')
     if FLAGS.ac_training: # added by yaserkl@vt.edu for the purpose of calculating rouge loss
       self._q_estimates = tf.placeholder(tf.float32, [self._hps.batch_size,self._hps.k,self._hps.max_dec_steps, None], name='q_estimates')
-    if FLAGS.scheduled_sampling:
-      self._sampling_probability = tf.placeholder(tf.float32, None, name='sampling_probability')
-      self._alpha = tf.placeholder(tf.float32, None, name='alpha')
+    self._sampling_probability = tf.placeholder(tf.float32, None, name='sampling_probability')
+    self._alpha = tf.placeholder(tf.float32, None, name='alpha')
 
     # decoder part
     self._dec_batch = tf.placeholder(tf.int32, [hps.batch_size, hps.max_dec_steps], name='dec_batch')

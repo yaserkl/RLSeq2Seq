@@ -251,7 +251,7 @@ Use ``dqn_pretrain_steps`` flag to set how many iteration you want to pre-train 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Start Training Actor/Critic using True Q-Estimates
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-We can run Actor in one GPU and Critic in another GPU simply by using a different GPU number for Critic using dqn_gpu_num option. Also as mentioned before, we should avoid using true Q-estimation for long, therefore, we use true estimation to train DDQN for only 1000 iterations.
+We can run Actor in one GPU and Critic in another GPU simply by using a different GPU number for Critic using ``dqn_gpu_num`` option. Also as mentioned before, we should avoid using true Q-estimation for long, therefore, we use true estimation to train DDQN for only 1000 iterations.
 
 .. code:: bash
 
@@ -260,7 +260,7 @@ We can run Actor in one GPU and Critic in another GPU simply by using a differen
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Start Training Actor/Critic using Q-Estimates
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-We can run Actor in one GPU and Critic in another GPU simply by using a different GPU number for Critic using dqn_gpu_num option.
+Please note that we don't use ``calculate_true_q`` flag, anymore.
 
 .. code:: bash
 

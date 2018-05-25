@@ -126,24 +126,30 @@ This code is a general framework for a variety of different modes that supporst 
    B. `Dueling Network Architectures for Deep Reinforcement Learning <https://arxiv.org/abs/1511.06581>`_
    C. `An ActorCritic Algorithm for Sequence Prediction <https://arxiv.org/abs/1607.07086>`_
 
-For instance, `Paulus et al <https://arxiv.org/abs/1705.04304>`_, proposed a self-critic policy-gradient model for abstractive text summarization. The following figure represents how this method works and how we implemented this method:
+---------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------
+Policy-Gradient w. Self-Critic learning and temporal attention and intra-decoder attention
+-------------------------------------------------------------------------------------------
+
+`Paulus et al <https://arxiv.org/abs/1705.04304>`_, proposed a self-critic policy-gradient model for abstractive text summarization. The following figure represents how this method works and how we implemented this method:
 
 .. image:: docs/_img/selfcritic.png
     :target: docs/_img/selfcritic.png
 
 To replicate their experiment, we can use the following set of processes:
 
---------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Pre-Training using only MLE loss with intradecoder attention and temporal attention
---------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code:: bash
 
     CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=80 --max_iter=17951 --use_temporal_attention=True --intradecoder=True --rl_training=False
 
 
-----------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Evaluation the pre-trained model on validation data
-----------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Here, we use a different GPU for evalation, but we can use the same GPU if we decrease the number of batches. In our implementation, we use a batch size of 8 for evaluation but for each eval step, we iterate over the validation dataset 100 times. This is similar to finding the evaluation error on a batch size of 800. This will help to decrease the memory required by the evaluation process and provide options for running both training and eval on one GPU.
 
 .. code:: bash
@@ -151,9 +157,9 @@ Here, we use a different GPU for evalation, but we can use the same GPU if we de
     CUDA_VISIBLE_DEVICES=1 python code/run_summarization.py --mode=eval --data_path=$HOME/data/cnn_dm/finished_files/chunked/val_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=8 --use_temporal_attention=True --intradecoder=True --rl_training=False
 
 
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Activating MLE+RL training
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 As suggested by `Paulus et al <https://arxiv.org/abs/1705.04304>`_, we use a linear transition from Cross-Entropy loss to RL loss so that in the end we completely rely on RL loss to train the model. The parameter eta controls this transition. We set eta to be eta = 1/(max RL iteration).
 
 First, add required training parameter to the model:
@@ -169,21 +175,18 @@ Then, start running the model with MLE+RL training loss:
 
     CUDA_VISIBLE_DEVICES=0 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=80 --max_iter=44000 --intradecoder=True --use_temporal_attention=True --eta=2.17599E-05 --rl_training=True
 
--------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Evaluating MLE+RL training on validation data
--------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: bash
 
     CUDA_VISIBLE_DEVICES=1 python code/run_summarization.py --mode=eval --data_path=$HOME/data/cnn_dm/finished_files/chunked/val_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=8 --use_temporal_attention=True --intradecoder=True --rl_training=True
 
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Start decoding the trained model
-----------------------------------
-~~~~~~~~~~~~~~~~~~~
-Evaluation metrics
-~~~~~~~~~~~~~~~~~~~
-ROUGE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+We use ROUGE as the evaluation metrics.
 
 .. code:: bash
 

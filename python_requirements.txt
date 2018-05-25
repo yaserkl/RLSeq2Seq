@@ -1,5 +1,5 @@
-PyYAML == 3.12
 tensorflow-gpu == 1.4
+PyYAML
 spacy
 scikit-learn
 nltk

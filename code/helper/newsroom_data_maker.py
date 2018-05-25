@@ -1,4 +1,4 @@
-# How to run: python summaries_data_maker.py $HOME/data/newsroom/
+# How to run: python newsroom_data_maker.py $HOME/data/newsroom/
 # The directory must contain the following files: [train,dev,test].data
 
 # This code will tokenize and detect Named-Entities and concat them with "_".

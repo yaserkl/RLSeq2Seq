@@ -275,7 +275,8 @@ In our implementation, the Actor is the pointer-generator model and the Critic i
  | ac_training                |      False      | Use Actor-Critic learning by DDQN.                                  |
  +----------------------------+-----------------+---------------------------------------------------------------------+
  | dqn_scheduled_sampling     |      False      | Whether to use scheduled sampling to use estimates of DDQN model    |
- |                            |                 | vs the actual Q-estimates values                                    |+----------------------------+-----------------+---------------------------------------------------------------------+
+ |                            |                 | vs the actual Q-estimates values                                    |
+ +----------------------------+-----------------+---------------------------------------------------------------------+
  | dqn_layers                 |   512,256,128   | DDQN dense hidden layer size.                                       |
  |                            |                 | It will create three dense layers with 512, 256, and 128 size       |
  +----------------------------+-----------------+---------------------------------------------------------------------+
@@ -292,8 +293,8 @@ In our implementation, the Actor is the pointer-generator model and the Critic i
  | dueling_net                |       True      | Whether to use Duelling Network to train the model                  |
  |                            |                 | https://arxiv.org/pdf/1511.06581.pdf                                |
  +----------------------------+-----------------+---------------------------------------------------------------------+
- | dqn_polyak_averaging       |       True      | Whether to use Polyak averaging to update the target Q network      | 
- |                            |                 | parameters:                                                         |
+ | dqn_polyak_averaging       |       True      | Whether to use Polyak averaging to update the target Q network      |
+ |                            |                 | parameters: Psi^{\prime} = (tau * Psi^{\prime})+ (1-tau)*Psi        |
  +----------------------------+-----------------+---------------------------------------------------------------------+
  | calculate_true_q           |      False      | Whether to use true Q-values to train DDQN                          |
  |                            |                 | or use DDQN's estimates to train it                                 |

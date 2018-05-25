@@ -1,6 +1,6 @@
 
 ********************
-Easy-TensorFlow
+RLSeq2Seq
 ********************
 
 .. image:: https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat
@@ -49,9 +49,14 @@ suffer from a common problem known as exposure bias. In this work, we first stud
 bias and show how these solutions perform on abstractive text summarization and finally propose our solution, SoftE2E, that reaches state-
 of-the-art result on CNN/Daily Mail dataset.
 
-.. image:: docs/_img/seq2seqmodel.png
-    :target: docs/_img/seq2seqmodel.png
+.. image:: docs/_img/seq2seq.png
+    :target: docs/_img/seq2seq.png
 
+.. image:: docs/_img/selfcritic.png
+    :target: docs/_img/selfcritic.png
+
+.. image:: docs/_img/rlseq.png
+    :target: docs/_img/rlseq.png
 
 ---------------------------------------------------------------------------
 
@@ -72,7 +77,7 @@ We have provided helper codes to download the cnn-dailymail dataset and
 pre-process this dataset and newsroom dataset.
 Please refer to this link to access them:
 
-code/helper
+.. _example: code/helper
 
 We saw a large improvement on the ROUGE measure by using our processed version of these datasets
 in the summarization results, therefore, we strongly suggest to use these pre-processed files for

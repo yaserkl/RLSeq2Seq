@@ -388,22 +388,14 @@ Decoding based on Actor and Critic estimation
 
 ---------------------------------------------------------------------------
 
-===============
-Citation
-===============
+.. ===============
+.. Citation
+.. ===============
 
-If you used this code please kindly cite the following paper:
+.. If you used this code please kindly cite the following paper:
 
-.. code:: bash
+.. .. code:: bash
 
-    @article{keneshloo2018deep,
-      title={Deep Reinforcement Learning For Sequence to Sequence Models},
-      author={Keneshloo, Yaser and Shi, Tian and Ramakrishnan, Naren and Reddy, Chandan K.},
-      journal={arXiv preprint arXiv:1805.09461},
-      year={2018}
-    }
-
----------------------------------------------------------------------------
 
 ===============
 Aknowledgement

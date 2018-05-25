@@ -115,10 +115,13 @@ GPU
 Running Experiments
 ====================
 This code is a general framework for a variety of different modes that supporst the following features:
+
 1. Scheduled Sampling, Soft-Scheduled Sampling, and End2EndBackProp.
 2. Policy-Gradient w. Self-Critic learning and temporal attention and intra-decoder attention:
+
    A. Following `A Deep Reinforced Model for Abstractive Summarization <https://arxiv.org/abs/1705.04304>`_
 3. Actor-Critic model through DDQN and Dueling network based on these papers:
+
    A. `Deep Reinforcement Learning with Double Qlearning <https://arxiv.org/abs/1509.06461>`_
    B. `Dueling Network Architectures for Deep Reinforcement Learning <https://arxiv.org/abs/1511.06581>`_
    C. `An ActorCritic Algorithm for Sequence Prediction <https://arxiv.org/abs/1607.07086>`_

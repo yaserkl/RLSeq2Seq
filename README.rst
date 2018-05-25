@@ -231,7 +231,7 @@ Pre-Training the Actor using only MLE loss
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Adding Critic model to the current model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-We can use Dueling network to train the DDQN by activating dueling_net flag. Moreover, we can choose to update the target network using polyak averaging by dqn_polyak_averaging flag.
+We can use Dueling network to train the DDQN by activating ``dueling_net`` flag. Moreover, we can choose to update the target network using polyak averaging by ``dqn_polyak_averaging`` flag.
 
 .. code:: bash
 
@@ -241,7 +241,7 @@ We can use Dueling network to train the DDQN by activating dueling_net flag. Mor
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Start Pre-Training Critic with fixed Actor
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Use dqn_pretrain_steps flag to set how many iteration you want to pre-train the Critic.
+Use ``dqn_pretrain_steps`` flag to set how many iteration you want to pre-train the Critic.
 
 .. code:: bash
 

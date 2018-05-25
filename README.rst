@@ -126,7 +126,7 @@ This code is a general framework for a variety of different modes that supporst 
 ---------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------------------
-Policy-Gradient w. Self-Critic learning and temporal attention and intra-decoder attention
+Scheduled Sampling, Soft-Scheduled Sampling, and End2EndBackProp
 -------------------------------------------------------------------------------------------
 `Bengio et al <https://arxiv.org/abs/1506.03099>`_. proposed the idea of scheduled sampling for avoiding exposure bias problem. Recently, `Goyal et al <https://arxiv.org/abs/1506.03099>`_. proposed a differentiable relaxtion of this method, by using soft-argmax rather hard-argmax, that solves the back-propagation error that exists in this model. Also, `Ranzato et al <https://arxiv.org/abs/1511.06732>`_. proposed another simple model called End2EndBackProp for avoiding exposure bias problem. To train a model based on each of these papers, we provide different flags as follows:
 
@@ -155,6 +155,7 @@ End2EndBackProp (`Ranzato et al <https://arxiv.org/abs/1511.06732>`_.):
 
     CUDA_VISIBLE_DEVICES=0 python run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-end2endbackprop --batch_size=80 --max_iter=43083 --scheduled_sampling=True --sampling_probability=9.28421E-06 --hard_argmax=True --E2EBackProp=True --k=4
 
+---------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------------------
 Policy-Gradient w. Self-Critic learning and temporal attention and intra-decoder attention
@@ -222,6 +223,12 @@ We use ROUGE as the evaluation metrics.
 
 
 ---------------------------------------------------------------------------
+
+
+----------------------------------------------------
+Actor-Critic model through DDQN and Dueling network
+----------------------------------------------------
+
 
 ===============
 Citation

@@ -44,6 +44,7 @@ class BeamSearchDecoder(object):
       vocab: Vocabulary object
     """
     self._model = model
+    self._model.build_graph()
     self._batcher = batcher
     self._vocab = vocab
     self._saver = tf.train.Saver() # we use this to load checkpoints for decoding
@@ -51,12 +52,11 @@ class BeamSearchDecoder(object):
 
     if FLAGS.ac_training:
       self._dqn = dqn
-      self._model.build_graph()
       self._dqn_graph = tf.Graph()
       with self._dqn_graph.as_default():
+        self._dqn.build_graph()
         self._dqn_saver = tf.train.Saver() # we use this to load checkpoints for decoding
         self._dqn_sess = tf.Session(config=util.get_config())
-        self._dqn.build_graph()
         _ = util.load_dqn_ckpt(self._dqn_saver, self._dqn_sess)
 
     # Load an initial checkpoint to use for decoding

@@ -51,6 +51,7 @@ Requirements
 -------------
 Python
 -------------
+  - Use Python 2.7
 
 Python requirements can be installed as follows:
 

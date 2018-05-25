@@ -115,18 +115,25 @@ This code is a general framework for a variety of different modes that supports 
    C. `An ActorCritic Algorithm for Sequence Prediction <https://arxiv.org/abs/1607.07086>`_
 
 
- .. +------------+------------+-----------+
- .. | Header 1   | Header 2   | Header 3  |
- .. +============+============+===========+
- .. | body row 1 | column 2   | column 3  |
- .. +------------+------------+-----------+
- .. | body row 2 | Cells may span columns.|
- .. +------------+------------+-----------+
- .. | body row 3 | Cells may  | - Cells   |
- .. +------------+ span rows. | - contain |
- .. | body row 4 |            | - blocks. |
- .. +------------+------------+-----------+
-
+ .. +----------------------------+---------+-------------------------------------------------------------------+
+ .. | Parameter                  | Default | Description                                                       |
+ .. +============================+=========+===================================================================+
+ .. | scheduled_sampling         | False   | whether to do scheduled sampling or not                           |
+ .. +----------------------------+---------+-------------------------------------------------------------------+
+ .. | sampling_probability       | 0       | epsilon value for choosing ground-truth or model output           |
+ .. +----------------------------+---------+-------------------------------------------------------------------+
+ .. | fixed_sampling_probability | False   | Whether to use fixed sampling probability or adaptive             |
+ .. +----------------------------+---------+-------------------------------------------------------------------+
+ .. | hard_argmax                | True    | Whether to use soft argmax or hard argmax                         |
+ .. +----------------------------+---------+-------------------------------------------------------------------+
+ .. | greedy_scheduled_sampling  | False   | Whether to use greedy or sample for the output, True means greedy |
+ .. +----------------------------+---------+-------------------------------------------------------------------+
+ .. | E2EBackProp                | False   | Whether to use E2EBackProp algorithm to solve exposure bias       |
+ .. +----------------------------+---------+-------------------------------------------------------------------+
+ .. | alpha                      | 1       | soft argmax argument                                              |
+ .. +----------------------------+---------+-------------------------------------------------------------------+
+ 
+ 
 ---------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------------------

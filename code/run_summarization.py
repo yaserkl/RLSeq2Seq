@@ -108,12 +108,12 @@ tf.app.flags.DEFINE_integer('dqn_pretrain_steps', 10000, 'number of steps to pre
 # Using sampling_probability=1.0 is equivalent to doing inference by only relying on the sampled token generated at each decoding step
 tf.app.flags.DEFINE_boolean('scheduled_sampling', False, 'whether to do scheduled sampling or not')
 tf.app.flags.DEFINE_string('decay_function', 'linear','linear, exponential, inv_sigmoid') #### TODO: implement this
-tf.app.flags.DEFINE_float('sampling_probability', 0, 'epsilon value for flipping the coin')
-tf.app.flags.DEFINE_boolean('fixed_sampling_probability', False, 'use fixed sampling probability or adaptive based on global step')
+tf.app.flags.DEFINE_float('sampling_probability', 0, 'epsilon value for choosing ground-truth or model output')
+tf.app.flags.DEFINE_boolean('fixed_sampling_probability', False, 'Whether to use fixed sampling probability or adaptive based on global step')
+tf.app.flags.DEFINE_boolean('hard_argmax', True, 'Whether to use soft argmax or hard argmax')
+tf.app.flags.DEFINE_boolean('greedy_scheduled_sampling', False, 'Whether to use greedy approach or sample for the output, if True it uses greedy')
 tf.app.flags.DEFINE_boolean('E2EBackProp', False, 'Whether to use E2EBackProp algorithm to solve exposure bias')
 tf.app.flags.DEFINE_float('alpha', 1, 'soft argmax argument')
-tf.app.flags.DEFINE_boolean('hard_argmax', True, 'whether to use soft argmax or hard argmax')
-tf.app.flags.DEFINE_boolean('greedy_scheduled_sampling', False, 'whether to use greedy approach or sample for the output, if True it uses greedy')
 
 # Coverage hyperparameters
 tf.app.flags.DEFINE_boolean('coverage', False, 'Use coverage mechanism. Note, the experiments reported in the ACL paper train WITHOUT coverage until converged, and then train for a short phase WITH coverage afterwards. i.e. to reproduce the results in the ACL paper, turn this off for most of training then turn on for a short phase at the end.')

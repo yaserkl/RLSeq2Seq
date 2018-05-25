@@ -353,36 +353,30 @@ class Seq2Seq(object):
       t0=time.time()
       if FLAGS.ac_training:
         transitions = self.model.collect_dqn_transitions(self.sess, batch, self.train_step, batch.max_art_oovs) # len(batch_size * k * max_dec_steps)
-        tf.logging.info('advantage values collection time: {}'.format(time.time()-t0))
+        tf.logging.info('Q-values collection time: {}'.format(time.time()-t0))
         with self.dqn_graph.as_default():
           # if using true Q-value to train DQN network,
           # we do this as the pre-training for the DQN network to get better estimates
           batch_len = len(transitions)
-          tf.logging.info('creating batch from transitions (b)')
           b = ReplayBuffer.create_batch(self.dqn_hps, transitions,len(transitions), use_state_prime = True, max_art_oovs = batch.max_art_oovs)
-          tf.logging.info('creating batch from transitions (b_prime)')
           b_prime = ReplayBuffer.create_batch(self.dqn_hps, transitions,len(transitions), use_state_prime = True, max_art_oovs = batch.max_art_oovs)
-          tf.logging.info('running test step on dqn')
           dqn_results = self.dqn.run_test_steps(sess=self.dqn_sess, x= b._x, return_best_action=True)
           q_estimates = dqn_results['estimates'] # shape (len(transitions), vocab_size)
           dqn_best_action = dqn_results['best_action']
           #dqn_q_estimate_loss = dqn_results['loss']
 
-          tf.logging.info('running test step on dqn_target')
           dqn_target_results = self.dqn_target.run_test_steps(self.dqn_sess, x= b_prime._x)
           q_vals_new_t = dqn_target_results['estimates'] # shape (len(transitions), vocab_size)
 
           # we need to expand the q_estimates to match the input batch max_art_oov
           q_estimates = np.concatenate([q_estimates,np.zeros((len(transitions),batch.max_art_oovs))],axis=-1)
 
-          tf.logging.info('fixing the action q-estimates')
           for i, tr in enumerate(transitions):
             if tr.done:
               q_estimates[i][tr.action] = tr.reward
             else:
               q_estimates[i][tr.action] = tr.reward + FLAGS.gamma * q_vals_new_t[i][dqn_best_action[i]]
           if FLAGS.dqn_scheduled_sampling:
-            tf.logging.info('scheduled sampling on q-estimates')
             q_estimates = self.scheduled_sampling(batch_len, FLAGS.sampling_probability, b._y_extended, q_estimates)
           if not FLAGS.calculate_true_q:
             # when we are not training DQN based on true Q-values
@@ -396,16 +390,11 @@ class Seq2Seq(object):
         # we train the DQN network, based on q_estimate variable as the true Q-values
         # therefore, we need to update true Q-value of the transitions variable with this one for each transition
         # then finally add the updated transitions variable to replay buffer
-        tf.logging.info('run train step on seq2seq model.')
         if FLAGS.dqn_pretrain:
           tf.logging.info('RUNNNING DQN PRETRAIN: Adding data to relplay buffer only...')
           continue
         results = self.model.run_train_steps(self.sess, batch, self.train_step, q_estimates)
       else:
-        if FLAGS.dqn_pretrain:
-          tf.logging.info('RUNNNING DQN PRETRAIN: Adding data to relplay buffer only...')
-          continue
-        else:
           results = self.model.run_train_steps(self.sess, batch, self.train_step)
       t1=time.time()
       # get the summaries and iteration number so we can write summaries to tensorboard

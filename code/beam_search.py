@@ -139,10 +139,11 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
         #b = ReplayBuffer.create_batch(dqn_hps, transitions,len(transitions), max_art_oovs = batch.max_art_oovs)
         print(decoder_output)
         print(decoder_output.shape)
+        batch_size = decoder_output.shape[0]
         dqn_results = dqn.run_test_steps(dqn_sess, x=decoder_output)
         q_estimates = dqn_results['estimates'] # shape (len(transitions), vocab_size)
         # we use the q_estimate of UNK token for all the OOV tokens
-        q_estimates = np.concatenate([q_estimates,np.reshape(q_estimates[:,0],[-1,1])*np.ones((decoder_output.shape[0],batch.max_art_oovs))],axis=-1)
+        q_estimates = np.concatenate([q_estimates,np.reshape(q_estimates[:,0],[-1,1])*np.ones((batch_size,batch.max_art_oovs))],axis=-1)
         # normalized q_estimate
         q_estimates_sum = tf.reduce_sum(q_estimates, axis=1) # shape (batch_size)
         q_estimate = q_estimates_sum / tf.reshape(q_estimates_sum, [-1, 1])
@@ -150,7 +151,7 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
         combined_estimates_sums = tf.reduce_sum(combined_estimates, axis=1)
         combined_estimates = combined_estimates / tf.reshape(combined_estimates_sums, [-1, 1]) # re-normalize
         # overwriting topk ids and probs
-        topk_ids, topk_log_probs = tf.nn.top_k(combined_estimates, hps.batch_size*2)
+        topk_ids, topk_log_probs = tf.nn.top_k(combined_estimates, batch_size*2)
         topk_log_probs = tf.log(topk_log_probs)
 
     # Extend each hypothesis and collect them all in all_hyps

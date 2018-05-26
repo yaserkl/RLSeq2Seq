@@ -142,7 +142,10 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
         dqn_results = dqn.run_test_steps(dqn_sess, x=decoder_output)
         q_estimates = dqn_results['estimates'] # shape (len(transitions), vocab_size)
         # we use the q_estimate of UNK token for all the OOV tokens
-        q_estimates = np.concatenate([q_estimates,q_estimates[:,0]*np.ones((decoder_output.shape[0],batch.max_art_oovs))],axis=-1)
+        q_estimates = np.concatenate([q_estimates,np.reshape(q_estimates[:,0],[-1,1])*np.ones((decoder_output.shape[0],batch.max_art_oovs))],axis=-1)
+        # normalized q_estimate
+        q_estimates_sum = tf.reduce_sum(q_estimates, axis=1) # shape (batch_size)
+        q_estimate = q_estimates_sum / tf.reshape(q_estimates_sum, [-1, 1])
         combined_estimates = final_dists * q_estimates
         combined_estimates_sums = tf.reduce_sum(combined_estimates, axis=1)
         combined_estimates = combined_estimates / tf.reshape(combined_estimates_sums, [-1, 1]) # re-normalize

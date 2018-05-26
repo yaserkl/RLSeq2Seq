@@ -143,11 +143,11 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
         # we use the q_estimate of UNK token for all the OOV tokens
         q_estimates = np.concatenate([q_estimates,np.reshape(q_estimates[:,0],[-1,1])*np.ones((FLAGS.beam_size,batch.max_art_oovs))],axis=-1)
         # normalized q_estimate
-        q_estimates_sum = tf.reduce_sum(q_estimates, axis=1) # shape (FLAGS.beam_size)
-        q_estimate = q_estimates_sum / tf.reshape(q_estimates_sum, [-1, 1])
+        q_estimates_sum = np.sum(q_estimates, axis=1) # shape (FLAGS.beam_size)
+        q_estimate = q_estimates_sum / np.reshape(q_estimates_sum, [-1, 1])
         combined_estimates = final_dists * q_estimates
-        combined_estimates_sums = tf.reduce_sum(combined_estimates, axis=1)
-        combined_estimates = combined_estimates / tf.reshape(combined_estimates_sums, [-1, 1]) # re-normalize
+        combined_estimates_sums = np.sum(combined_estimates, axis=1)
+        combined_estimates = combined_estimates / np.reshape(combined_estimates_sums, [-1, 1]) # re-normalize
         # overwriting topk ids and probs
         print(combined_estimates)
         print(combined_estimates.shape)

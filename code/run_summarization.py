@@ -190,7 +190,7 @@ class Seq2Seq(object):
     # load best evaluation loss so far
     best_loss = None
     best_step = None
-    # goes through all event files and select the least loss achieved as the best loss
+    # goes through all event files and select the best loss achieved and return it
     event_files = sorted(glob('{}/eval/events*'.format(FLAGS.log_root)))
     for ef in event_files:
       try:
@@ -231,15 +231,15 @@ class Seq2Seq(object):
     exit()
 
   def convert_to_reinforce_model(self):
-    """Load non-coverage checkpoint, add initialized extra variables for coverage, and save as new checkpoint"""
-    tf.logging.info("converting non-coverage model to coverage model..")
+    """Load non-reinforce checkpoint, add initialized extra variables for reinforce, and save as new checkpoint"""
+    tf.logging.info("converting non-reinforce model to reinforce model..")
 
-    # initialize an entire coverage model from scratch
+    # initialize an entire reinforce model from scratch
     sess = tf.Session(config=util.get_config())
     print "initializing everything..."
     sess.run(tf.global_variables_initializer())
 
-    # load all non-coverage weights from checkpoint
+    # load all non-reinforce weights from checkpoint
     saver = tf.train.Saver([v for v in tf.global_variables() if "reinforce" not in v.name and "Adagrad" not in v.name])
     print "restoring non-reinforce variables..."
     curr_ckpt = util.load_ckpt(saver, sess)
@@ -256,9 +256,10 @@ class Seq2Seq(object):
   def setup_training(self):
     """Does setup before starting training (run_training)"""
     train_dir = os.path.join(FLAGS.log_root, "train")
-    dqn_train_dir = os.path.join(FLAGS.log_root, "dqn", "train")
     if not os.path.exists(train_dir): os.makedirs(train_dir)
-    if not os.path.exists(dqn_train_dir): os.makedirs(dqn_train_dir)
+    if FLAGS.ac_training:
+      dqn_train_dir = os.path.join(FLAGS.log_root, "dqn", "train")
+      if not os.path.exists(dqn_train_dir): os.makedirs(dqn_train_dir)
     #replaybuffer_pcl_path = os.path.join(FLAGS.log_root, "replaybuffer.pcl")
     #if not os.path.exists(dqn_target_train_dir): os.makedirs(dqn_target_train_dir)
 
@@ -274,6 +275,7 @@ class Seq2Seq(object):
       self.restore_best_model()
     saver = tf.train.Saver(max_to_keep=3) # keep 3 checkpoints at a time
 
+    # Loads pre-trained word-embedding. By default the model learns the embedding.
     if FLAGS.embedding:
       self.vocab.LoadWordEmbedding(FLAGS.embedding, FLAGS.emb_dim)
       word_vector = self.vocab.getWordEmbedding()
@@ -292,6 +294,7 @@ class Seq2Seq(object):
     if FLAGS.ac_training:
       tf.logging.info('DDQN building graph')
       t1 = time.time()
+      # We create a separate graph for DDQN
       self.dqn_graph = tf.Graph()
       with self.dqn_graph.as_default():
         self.dqn.build_graph() # build dqn graph

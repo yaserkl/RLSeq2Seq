@@ -396,6 +396,17 @@ Please note that we can use options such as ``intradecoder``, ``temporal_attenti
 
 .. .. code:: bash
 
+==================
+Under Development
+==================
+
+~~~~~~~~~~~~~~~~~~~~~~~~
+Supporting YAML configs
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Storing ReplayBuffer in disk for Actor-Critic models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ===============
 Aknowledgement

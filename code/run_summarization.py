@@ -402,20 +402,23 @@ class Seq2Seq(object):
           if FLAGS.dqn_scheduled_sampling:
             q_estimates = self.scheduled_sampling(batch_len, FLAGS.sampling_probability, b._y_extended, q_estimates)
           if not FLAGS.calculate_true_q:
-            # when we are not training DQN based on true Q-values
-            # we need to update Q-values in our transitions based on this q_estimates we collected from DQN current network.
+            # when we are not training DDQN based on true Q-values,
+            # we need to update Q-values in our transitions based on the q_estimates we collected from DQN current network.
             for trans, q_val in zip(transitions,q_estimates):
               trans.q_values = q_val # each have the size vocab_extended
           q_estimates = np.reshape(q_estimates, [FLAGS.batch_size, FLAGS.k, FLAGS.max_dec_steps, -1]) # shape (batch_size, k, max_dec_steps, vocab_size_extended)
+        # Once we are done with modifying Q-values, we can use them to train the DDQN model.
+        # In this paper, we use a priority experience buffer which always selects states with higher quality
+        # to train the DDQN. The following line will add batch_size * max_dec_steps experiences to the replay buffer.
+        # As mentioned before, the DDQN training is asynchronous. Therefore, once the related queues for DDQN training
+        # are full, the DDQN will start the training.
         self.replay_buffer.add(transitions)
-        # if using estimated Q-value to train DQN network
-        # this way, we only need to calculate the reward for a single action, not the whole vocabulary
-        # we train the DQN network, based on q_estimate variable as the true Q-values
-        # therefore, we need to update true Q-value of the transitions variable with this one for each transition
-        # then finally add the updated transitions variable to replay buffer
+        # If dqn_pretrain flag is on, it means that we use a fixed Actor to only collect experiences for
+        # DDQN pre-training
         if FLAGS.dqn_pretrain:
           tf.logging.info('RUNNNING DQN PRETRAIN: Adding data to relplay buffer only...')
           continue
+        # if not, use the q_estimation to update the loss.
         results = self.model.run_train_steps(self.sess, batch, self.train_step, q_estimates)
       else:
           results = self.model.run_train_steps(self.sess, batch, self.train_step)
@@ -691,6 +694,7 @@ class Seq2Seq(object):
     if FLAGS.ac_training:
       hps_dict.update({'dqn_input_feature_len':(FLAGS.dec_hidden_dim)})
     self.hps = namedtuple("HParams", hps_dict.keys())(**hps_dict)
+    # creating all the required parameters for DDQN model.
     if FLAGS.ac_training:
       hparam_list = ['lr', 'dqn_gpu_num', 
       'dqn_layers', 
@@ -719,7 +723,9 @@ class Seq2Seq(object):
       print "creating model..."
       self.model = SummarizationModel(self.hps, self.vocab)
       if FLAGS.ac_training:
+        # current DQN with paramters \Psi
         self.dqn = DQN(self.dqn_hps,'current')
+        # target DQN with paramters \Psi^{\prime}
         self.dqn_target = DQN(self.dqn_hps,'target')
       self.setup_training()
     elif self.hps.mode == 'eval':
@@ -733,6 +739,7 @@ class Seq2Seq(object):
       decode_model_hps = self.hps._replace(max_dec_steps=1) # The model is configured with max_dec_steps=1 because we only ever run one step of the decoder at a time (to do beam search). Note that the batcher is initialized with max_dec_steps equal to e.g. 100 because the batches need to contain the full summaries
       model = SummarizationModel(decode_model_hps, self.vocab)
       if FLAGS.ac_training:
+        # We need our target DDQN network for collecting Q-estimation at each decoder step.
         dqn_target = DQN(self.dqn_hps,'target')
       else:
         dqn_target = None
@@ -741,7 +748,9 @@ class Seq2Seq(object):
     else:
       raise ValueError("The 'mode' flag must be one of train/eval/decode")
 
-  def scheduled_sampling(self, batch_size, sampling_probability, true, estimate): # based on https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/ScheduledEmbeddingTrainingHelper
+  # Scheduled sampling used for either selecting true Q-estimates or the DDQN estimation
+  # based on https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/ScheduledEmbeddingTrainingHelper
+  def scheduled_sampling(self, batch_size, sampling_probability, true, estimate):
     with variable_scope.variable_scope("ScheduledEmbedding"):
       # Return -1s where we do not sample, and sample_ids elsewhere
       select_sampler = bernoulli.Bernoulli(probs=sampling_probability, dtype=tf.bool)

@@ -373,24 +373,32 @@ class Seq2Seq(object):
         # whenever we are working with the DDQN, we switch using DDQN graph rather than default graph
         with self.dqn_graph.as_default():
           batch_len = len(transitions)
+          # we use current decoder state to predict q_estimates, use_state_prime = False
           b = ReplayBuffer.create_batch(self.dqn_hps, transitions,len(transitions), use_state_prime = False, max_art_oovs = batch.max_art_oovs)
+          # we also get the next decoder state to correct the estimation, use_state_prime = True
           b_prime = ReplayBuffer.create_batch(self.dqn_hps, transitions,len(transitions), use_state_prime = True, max_art_oovs = batch.max_art_oovs)
+          # use current DQN to estimate values from current decoder state
           dqn_results = self.dqn.run_test_steps(sess=self.dqn_sess, x= b._x, return_best_action=True)
           q_estimates = dqn_results['estimates'] # shape (len(transitions), vocab_size)
           dqn_best_action = dqn_results['best_action']
           #dqn_q_estimate_loss = dqn_results['loss']
 
+          # use target DQN to estimate values for the next decoder state
           dqn_target_results = self.dqn_target.run_test_steps(self.dqn_sess, x= b_prime._x)
           q_vals_new_t = dqn_target_results['estimates'] # shape (len(transitions), vocab_size)
 
           # we need to expand the q_estimates to match the input batch max_art_oov
-          q_estimates = np.concatenate([q_estimates,np.zeros((len(transitions),batch.max_art_oovs))],axis=-1)
-
+          # we use the q_estimate of UNK token for all the OOV tokens
+          q_estimates = np.concatenate([q_estimates,
+            np.reshape(q_estimates[:,0],[-1,1])*np.ones((len(transitions),batch.max_art_oovs))],axis=-1)
+          # modify Q-estimates using the result collected from current and target DQN.
+          # check algorithm 5 in the paper for more info: https://arxiv.org/pdf/1805.09461.pdf
           for i, tr in enumerate(transitions):
             if tr.done:
               q_estimates[i][tr.action] = tr.reward
             else:
               q_estimates[i][tr.action] = tr.reward + FLAGS.gamma * q_vals_new_t[i][dqn_best_action[i]]
+          # use scheduled sampling to whether use true Q-values or DDQN estimation
           if FLAGS.dqn_scheduled_sampling:
             q_estimates = self.scheduled_sampling(batch_len, FLAGS.sampling_probability, b._y_extended, q_estimates)
           if not FLAGS.calculate_true_q:

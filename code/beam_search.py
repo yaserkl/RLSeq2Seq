@@ -133,8 +133,7 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
                         prev_encoder_es = encoder_es if (FLAGS.use_temporal_attention and FLAGS.mode=="decode") else tf.stack([], axis=0))
     decoder_outputs.append(decoder_output)
     encoder_es.append(encoder_e)
-    print(topk_log_probs)
-    print(topk_ids)
+
     if FLAGS.ac_training:
       with dqn_graph.as_default():
         #transitions = [Transition(state, None, None, None, None, None, None) for state in decoder_output]
@@ -145,12 +144,8 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
         q_estimates = np.concatenate([q_estimates,np.reshape(q_estimates[:,0],[-1,1])*np.ones((FLAGS.beam_size,batch.max_art_oovs))],axis=-1)
         # normalized q_estimate
         q_estimates = normalize(q_estimates, axis=1, norm='l1')
-        #q_estimates_sum = np.sum(q_estimates, axis=1) # shape (FLAGS.beam_size)
-        #q_estimate = q_estimates_sum / np.reshape(q_estimates_sum, [-1, 1])
         combined_estimates = final_dists * q_estimates
         combined_estimates = normalize(combined_estimates, axis=1, norm='l1')
-        #combined_estimates_sums = np.sum(combined_estimates, axis=1)
-        #combined_estimates = combined_estimates / np.reshape(combined_estimates_sums, [-1, 1]) # re-normalize
         # overwriting topk ids and probs
         topk_ids = np.argsort(combined_estimates,axis=-1)[:,-FLAGS.beam_size*2:][:,::-1]
         topk_probs = [combined_estimates[i,_] for i,_ in enumerate(topk_ids)]

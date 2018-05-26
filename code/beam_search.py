@@ -19,6 +19,7 @@
 import tensorflow as tf
 import numpy as np
 import data
+from replay_buffer import Transition
 
 FLAGS = tf.app.flags.FLAGS
 

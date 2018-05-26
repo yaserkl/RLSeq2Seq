@@ -4,7 +4,7 @@
 # it will return:
 # --president_trump said he based his decision on " open hostility " from north_korea EOS--
 
-# python cnn_dm_data_merger.py ~/data/cnn_dm/ cnn_dm.txt
+# python cnn_dm_data_merger.py ~/data/cnn_dm/ cnn_dm.txt ./filter_files.txt
 
 # ~/data/cnn_dm/: This directory must contains the following subdirectories:
 # --~/data/cnn_dm/cnn/
@@ -17,16 +17,21 @@
 # ----~/data/cnn_dm/dailymail/[article,title,highlight]_spacy_ner
 
 from glob import glob
-import sys
+import os, sys
 from collections import defaultdict
 import pandas as pd
+import numpy as np
+from collections import Counter
+from tensorflow.core.example import example_pb2
+import struct
 
 root_dir = sys.argv[1]
 outfile = sys.argv[2]
+filter_file = sys.argv[3]
 
 datasets = ['cnn','dailymail']
 df = defaultdict(list)
-fw = open('{}/{}'.format(working_dir,outfile),'w')
+fw = open('{}/{}'.format(root_dir,outfile),'w')
 for dataset in datasets:
     working_dir = os.path.join(root_dir, dataset)
     files = glob('{}/article_spacy_line/*'.format(working_dir))
@@ -83,7 +88,7 @@ data['test'] = test
 vocab = Counter()
 for filetype in ['train','dev','test']:
     writer = open('{}/{}.bin'.format(root_dir,filetype), 'wb')
-    for article, abstract in izip(data[filetype]['article'],data[filetype]['abstract']):
+    for article, abstract in zip(data[filetype]['article'].values,data[filetype]['abstract'].values):
         tf_example = example_pb2.Example()
         tf_example.features.feature['article'].bytes_list.value.extend([article.encode()])
         tf_example.features.feature['abstract'].bytes_list.value.extend([abstract.encode()])

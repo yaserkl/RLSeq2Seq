@@ -34,6 +34,14 @@ from replay_buffer import ReplayBuffer
 from dqn import DQN
 from threading import Thread
 import pickle
+from tensorflow.python.ops import variable_scope
+from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import nn_ops
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import gen_array_ops
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops.distributions import categorical
+from tensorflow.python.ops.distributions import bernoulli
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -179,8 +187,10 @@ class Seq2Seq(object):
     exit()
 
   def restore_best_eval_model(self):
+    # load best evaluation loss so far
     best_loss = None
     best_step = None
+    # goes through all event files and select the least loss achieved as the best loss
     event_files = sorted(glob('{}/eval/events*'.format(FLAGS.log_root)))
     for ef in event_files:
       try:
@@ -499,12 +509,13 @@ class Seq2Seq(object):
         tf.logging.info('building current network took {} seconds'.format(time.time()-t1))
         self.dqn_target.build_graph() # build dqn target graph
         tf.logging.info('building target network took {} seconds'.format(time.time()-t1))
+        dqn_saver = tf.train.Saver(max_to_keep=3) # keep 3 checkpoints at a time
         dqn_sess = tf.Session(config=util.get_config())
       dqn_train_step = 0
       replay_buffer = ReplayBuffer(self.dqn_hps)
 
     running_avg_loss = 0 # the eval job keeps a smoother, running average loss to tell it when to implement early stopping
-    best_loss = restore_best_eval_model()  # will hold the best loss achieved so far
+    best_loss = self.restore_best_eval_model()  # will hold the best loss achieved so far
     train_step = 0
 
     while True:
@@ -519,6 +530,7 @@ class Seq2Seq(object):
         processed_batch += FLAGS.batch_size
         batch = self.batcher.next_batch() # get the next batch
         if FLAGS.ac_training:
+          t0 = time.time()
           transitions = self.model.collect_dqn_transitions(sess, batch, train_step, batch.max_art_oovs) # len(batch_size * k * max_dec_steps)
           tf.logging.info('Q values collection time: {}'.format(time.time()-t0))
           with dqn_graph.as_default():
@@ -567,13 +579,13 @@ class Seq2Seq(object):
         tf.logging.info('processed_batch: {}, seconds for batch: {}'.format(processed_batch, t1-t0))
 
         printer_helper = {}
-        printer_helper['pgen_loss']= results['pgen_loss']
+        loss = printer_helper['pgen_loss']= results['pgen_loss']
         if FLAGS.coverage:
           printer_helper['coverage_loss'] = results['coverage_loss']
-          if FLAGS.rl_training:
-            printer_helper['rl_cov_total_loss']= results['reinforce_cov_total_loss']
+          if FLAGS.rl_training or FLAGS.ac_training:
+            loss = printer_helper['rl_cov_total_loss']= results['reinforce_cov_total_loss']
           else:
-            printer_helper['pointer_cov_total_loss'] = results['pointer_cov_total_loss']
+            loss = printer_helper['pointer_cov_total_loss'] = results['pointer_cov_total_loss']
         if FLAGS.rl_training or FLAGS.ac_training:
           printer_helper['shared_loss'] = results['shared_loss']
           printer_helper['rl_loss'] = results['rl_loss']
@@ -590,7 +602,7 @@ class Seq2Seq(object):
         summary_writer.add_summary(summaries, train_step)
 
         # calculate running avg loss
-        avg_losses.append(calc_running_avg_loss(np.asscalar(loss), running_avg_loss, summary_writer, train_step))
+        avg_losses.append(self.calc_running_avg_loss(np.asscalar(loss), running_avg_loss, summary_writer, train_step))
         tf.logging.info('-------------------------------------------')
 
       running_avg_loss = np.mean(avg_losses)

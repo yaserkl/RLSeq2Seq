@@ -13,12 +13,10 @@ import struct
 import spacy
 nlp = spacy.load('en')
 from unidecode import unidecode
-from tensorflow.core.example import example_pb2
 import random
 from multiprocessing import Pool, cpu_count
 from newsroom import jsonl
 from newsroom.analyze import Fragments
-from collections import Counter
 from spacy.tokenizer import Tokenizer
 tokenizer = Tokenizer(nlp.vocab)
 from nltk.tokenize import word_tokenize

@@ -18,7 +18,7 @@ RLSeq2Seq
 
 NOTE: WE ARE CURRENTLY UPDATING DOCUMENTATIONS...
 
-This repository contains the code developed by TensorFlow_ for the following paper:
+This repository contains the code developed in TensorFlow_ for the following paper:
 
 
 | `Deep Reinforcement Learning For Sequence to Sequence Models`_,

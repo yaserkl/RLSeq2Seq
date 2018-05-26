@@ -132,26 +132,24 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
                         prev_encoder_es = encoder_es if (FLAGS.use_temporal_attention and FLAGS.mode=="decode") else tf.stack([], axis=0))
     decoder_outputs.append(decoder_output)
     encoder_es.append(encoder_e)
-
+    print(topk_log_probs)
+    print(topk_ids)
     if FLAGS.ac_training:
       with dqn_graph.as_default():
         #transitions = [Transition(state, None, None, None, None, None, None) for state in decoder_output]
         #b = ReplayBuffer.create_batch(dqn_hps, transitions,len(transitions), max_art_oovs = batch.max_art_oovs)
-        print(decoder_output)
-        print(decoder_output.shape)
-        batch_size = decoder_output.shape[0]
         dqn_results = dqn.run_test_steps(dqn_sess, x=decoder_output)
         q_estimates = dqn_results['estimates'] # shape (len(transitions), vocab_size)
         # we use the q_estimate of UNK token for all the OOV tokens
-        q_estimates = np.concatenate([q_estimates,np.reshape(q_estimates[:,0],[-1,1])*np.ones((batch_size,batch.max_art_oovs))],axis=-1)
+        q_estimates = np.concatenate([q_estimates,np.reshape(q_estimates[:,0],[-1,1])*np.ones((FLAGS.beam_size,batch.max_art_oovs))],axis=-1)
         # normalized q_estimate
-        q_estimates_sum = tf.reduce_sum(q_estimates, axis=1) # shape (batch_size)
+        q_estimates_sum = tf.reduce_sum(q_estimates, axis=1) # shape (FLAGS.beam_size)
         q_estimate = q_estimates_sum / tf.reshape(q_estimates_sum, [-1, 1])
         combined_estimates = final_dists * q_estimates
         combined_estimates_sums = tf.reduce_sum(combined_estimates, axis=1)
         combined_estimates = combined_estimates / tf.reshape(combined_estimates_sums, [-1, 1]) # re-normalize
         # overwriting topk ids and probs
-        topk_probs, topk_ids = tf.nn.top_k(combined_estimates, batch_size*2)
+        topk_probs, topk_ids = tf.nn.top_k(combined_estimates, FLAGS.beam_size*2)
         print(topk_probs)
         topk_log_probs = tf.log(topk_probs)
         print(topk_log_probs)

@@ -722,6 +722,7 @@ class SummarizationModel(object):
 
     if FLAGS.ac_training or FLAGS.intradecoder:
       to_return['output']=self.decoder_outputs
+    if FLAGS.intradecoder:
       feed[self.prev_decoder_outputs]= prev_decoder_outputs
     if FLAGS.use_temporal_attention:
       to_return['temporal_e'] = self.temporal_es

@@ -19,7 +19,7 @@
 import tensorflow as tf
 import numpy as np
 import data
-from replay_buffer import Transition
+from replay_buffer import Transition, ReplayBuffer
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -135,8 +135,11 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
 
     if FLAGS.ac_training:
       with dqn_graph.as_default():
-        transitions = [Transition(state, None, None, None, None, None, None) for state in decoder_output]
-        dqn_results = dqn.run_test_steps(dqn_sess, x=transitions)
+        #transitions = [Transition(state, None, None, None, None, None, None) for state in decoder_output]
+        #b = ReplayBuffer.create_batch(dqn_hps, transitions,len(transitions), max_art_oovs = batch.max_art_oovs)
+        print(decoder_output)
+        print(decoder_output.shape)
+        dqn_results = dqn.run_test_steps(dqn_sess, x=decoder_output)
         q_estimates = dqn_results['estimates'] # shape (len(transitions), vocab_size)
         combined_estimates = final_dists * q_estimates
         combined_estimates_sums = tf.reduce_sum(combined_estimates, axis=1)

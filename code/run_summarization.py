@@ -246,11 +246,10 @@ class Seq2Seq(object):
   def setup_training(self):
     """Does setup before starting training (run_training)"""
     train_dir = os.path.join(FLAGS.log_root, "train")
-    dqn_train_dir = os.path.join(FLAGS.log_root, "dqn")
-    dqn_target_train_dir = os.path.join(FLAGS.log_root, "dqn_target")
+    dqn_train_dir = os.path.join(FLAGS.log_root, "dqn", "train")
     if not os.path.exists(train_dir): os.makedirs(train_dir)
     if not os.path.exists(dqn_train_dir): os.makedirs(dqn_train_dir)
-    replaybuffer_pcl_path = os.path.join(FLAGS.log_root, "replaybuffer.pcl")
+    #replaybuffer_pcl_path = os.path.join(FLAGS.log_root, "replaybuffer.pcl")
     #if not os.path.exists(dqn_target_train_dir): os.makedirs(dqn_target_train_dir)
 
     self.model.build_graph() # build the graph

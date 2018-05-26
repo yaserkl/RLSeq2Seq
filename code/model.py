@@ -418,7 +418,6 @@ class SummarizationModel(object):
       'decoder_outputs': self.decoder_outputs,
     }
     ret_dict = sess.run(to_return, feed_dict)
-
     # calculate reward
     _t = time.time()
     ### TODO: do it in parallel???
@@ -560,6 +559,7 @@ class SummarizationModel(object):
         'summaries': self._summaries,
         'pgen_loss': self._pgen_loss,
         'global_step': self.global_step,
+        'decoder_outputs': self.decoder_outputs
     }
 
     if self._hps.rl_training:
@@ -744,8 +744,8 @@ class SummarizationModel(object):
     else:
       p_gens = [None for _ in xrange(beam_size)]
 
-    if FLAGS.intradecoder:
-      output = results['output'][0] # used for calculating the intradecoder at later steps
+    if FLAGS.ac_training or FLAGS.intradecoder:
+      output = results['output'][0] # used for calculating the intradecoder at later steps and for calcualting q-estimate in Actor-Critic training.
     else:
       output = None
     if FLAGS.use_temporal_attention:

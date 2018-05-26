@@ -720,7 +720,7 @@ class SummarizationModel(object):
       feed[self.prev_coverage] = np.stack(prev_coverage, axis=0)
       to_return['coverage'] = self.coverage
 
-    if FLAGS.intradecoder:
+    if FLAGS.ac_training or FLAGS.intradecoder:
       to_return['output']=self.decoder_outputs
       feed[self.prev_decoder_outputs]= prev_decoder_outputs
     if FLAGS.use_temporal_attention:

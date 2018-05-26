@@ -349,6 +349,7 @@ class Seq2Seq(object):
 
     self.train_step = 0
     if FLAGS.ac_training:
+      # DDQN training is done asynchronously along with model training
       tf.logging.info('Starting DQN training thread...')
       self.dqn_train_step = 0
       self.thrd_dqn_training = Thread(target=self.dqn_training)
@@ -358,19 +359,21 @@ class Seq2Seq(object):
       watcher = Thread(target=self.watch_threads)
       watcher.daemon = True
       watcher.start()
-
+    # starting the main thread
     tf.logging.info('Starting Seq2Seq training...')
     while True: # repeats until interrupted
       batch = self.batcher.next_batch()
       t0=time.time()
       if FLAGS.ac_training:
+        # For DDQN, we first collect the model output to calculate the reward and Q-estimates
+        # Then we fix the estimation either using our target network or using the true Q-values
+        # This process will usually take time and we are working on improving it.
         transitions = self.model.collect_dqn_transitions(self.sess, batch, self.train_step, batch.max_art_oovs) # len(batch_size * k * max_dec_steps)
         tf.logging.info('Q-values collection time: {}'.format(time.time()-t0))
+        # whenever we are working with the DDQN, we switch using DDQN graph rather than default graph
         with self.dqn_graph.as_default():
-          # if using true Q-value to train DQN network,
-          # we do this as the pre-training for the DQN network to get better estimates
           batch_len = len(transitions)
-          b = ReplayBuffer.create_batch(self.dqn_hps, transitions,len(transitions), use_state_prime = True, max_art_oovs = batch.max_art_oovs)
+          b = ReplayBuffer.create_batch(self.dqn_hps, transitions,len(transitions), use_state_prime = False, max_art_oovs = batch.max_art_oovs)
           b_prime = ReplayBuffer.create_batch(self.dqn_hps, transitions,len(transitions), use_state_prime = True, max_art_oovs = batch.max_art_oovs)
           dqn_results = self.dqn.run_test_steps(sess=self.dqn_sess, x= b._x, return_best_action=True)
           q_estimates = dqn_results['estimates'] # shape (len(transitions), vocab_size)

@@ -16,9 +16,6 @@ RLSeq2Seq
 .. image:: https://img.shields.io/badge/arXiv-1805.09461-red.svg?style=flat
    :target: https://arxiv.org/abs/1805.09461
 
-NOTE 1: WE ARE CURRENTLY UPDATING DOCUMENTATIONS...
-
-NOTE 2: PLEASE ALWAYS PULL THE LATEST VERSION, WE ARE DEVELOPING LOTS OF OTHER IDEAS
 
 This repository contains the code developed in TensorFlow_ for the following paper:
 

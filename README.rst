@@ -391,11 +391,7 @@ Decoding based on Actor and Critic estimation
 
 ---------------------------------------------------------------------------
 
-.. ===============
-.. Citation
-.. ===============
-
-.. If you used this code please kindly cite the following paper:
+Please note that we can use options such as ``intradecoder``, ``temporal_attention``, ``E2EBackProp``, ``scheduled_sampling``, etc in Actor-Critic models, too. Using these options will help to have a better performing Actor model.
 
 .. .. code:: bash
 

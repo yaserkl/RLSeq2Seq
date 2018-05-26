@@ -20,6 +20,7 @@ import tensorflow as tf
 import numpy as np
 import data
 from replay_buffer import Transition, ReplayBuffer
+from sklearn.preprocessing import normalize
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -143,19 +144,17 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
         # we use the q_estimate of UNK token for all the OOV tokens
         q_estimates = np.concatenate([q_estimates,np.reshape(q_estimates[:,0],[-1,1])*np.ones((FLAGS.beam_size,batch.max_art_oovs))],axis=-1)
         # normalized q_estimate
-        q_estimates_sum = np.sum(q_estimates, axis=1) # shape (FLAGS.beam_size)
-        q_estimate = q_estimates_sum / np.reshape(q_estimates_sum, [-1, 1])
+        q_estimates = normalize(q_estimates, axis=1, norm='l1')
+        #q_estimates_sum = np.sum(q_estimates, axis=1) # shape (FLAGS.beam_size)
+        #q_estimate = q_estimates_sum / np.reshape(q_estimates_sum, [-1, 1])
         combined_estimates = final_dists * q_estimates
-        combined_estimates_sums = np.sum(combined_estimates, axis=1)
-        combined_estimates = combined_estimates / np.reshape(combined_estimates_sums, [-1, 1]) # re-normalize
+        combined_estimates = normalize(combined_estimates, axis=1, norm='l1')
+        #combined_estimates_sums = np.sum(combined_estimates, axis=1)
+        #combined_estimates = combined_estimates / np.reshape(combined_estimates_sums, [-1, 1]) # re-normalize
         # overwriting topk ids and probs
-        print(combined_estimates)
-        print(combined_estimates.shape)
         topk_ids = np.argsort(combined_estimates,axis=-1)[:,-FLAGS.beam_size*2:][:,::-1]
         topk_probs = [combined_estimates[i,_] for i,_ in enumerate(topk_ids)]
-        print(topk_probs)
-        topk_log_probs = tf.log(topk_probs)
-        print(topk_log_probs)
+        topk_log_probs = np.log(topk_probs)
 
     # Extend each hypothesis and collect them all in all_hyps
     all_hyps = []

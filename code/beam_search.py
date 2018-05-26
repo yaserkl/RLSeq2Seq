@@ -149,6 +149,8 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
         combined_estimates_sums = tf.reduce_sum(combined_estimates, axis=1)
         combined_estimates = combined_estimates / tf.reshape(combined_estimates_sums, [-1, 1]) # re-normalize
         # overwriting topk ids and probs
+        print(combined_estimates)
+        print(combined_estimates.shape)
         topk_ids = np.argsort(combined_estimates,axis=-1)[:,-FLAGS.beam_size*2:][:,::-1]
         topk_probs = [combined_estimates[i,_] for i,_ in enumerate(topk_ids)]
         print(topk_probs)

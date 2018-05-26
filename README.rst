@@ -21,7 +21,7 @@ This repository contains the code developed in TensorFlow_ for the following pap
 
 
 | `Deep Reinforcement Learning For Sequence to Sequence Models`_,
-| by: `Yaser Keneshloo`_, `Tian Shi`_, `Chandan K. Reddy`_ and `Naren Ramakrishnan`_
+| by: `Yaser Keneshloo`_, `Tian Shi`_, `Naren Ramakrishnan`_, and `Chandan K. Reddy`_
 
 
 .. _Deep Reinforcement Learning For Sequence to Sequence Models: https://arxiv.org/abs/1805.09461

@@ -151,7 +151,7 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
         combined_estimates_sums = tf.reduce_sum(combined_estimates, axis=1)
         combined_estimates = combined_estimates / tf.reshape(combined_estimates_sums, [-1, 1]) # re-normalize
         # overwriting topk ids and probs
-        topk_ids, topk_log_probs = tf.nn.top_k(combined_estimates, batch_size*2)
+        topk_log_probs, topk_ids = tf.nn.top_k(combined_estimates, batch_size*2)
         topk_log_probs = tf.log(topk_log_probs)
 
     # Extend each hypothesis and collect them all in all_hyps

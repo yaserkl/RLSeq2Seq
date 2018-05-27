@@ -289,6 +289,7 @@ class SummarizationModel(object):
         loss_per_step.append(losses)
       self._pgen_loss = _mask_and_avg(loss_per_step, self._dec_padding_mask)
       self.variable_summaries('pgen_loss', self._pgen_loss)
+      # Adding Q-Estimation to CE loss in Actor-Critic Model
       if self._hps.ac_training:
         # Calculating Actor-Critic loss
         # Here, we multiple the Q-estimation for each token to its respective probability
@@ -322,6 +323,7 @@ class SummarizationModel(object):
           self.variable_summaries('reinforce_loss', self._rl_loss)
           self.variable_summaries('reinforce_shared_loss', self._reinforce_shared_loss)
 
+      # Adding Self-Critic Reward to CE loss in Policy-Gradient Model
       if self._hps.rl_training:
         #### Calculating the reinforce loss according to Eq. 15 in https://arxiv.org/pdf/1705.04304.pdf
         loss_per_step = [] # will be list length max_dec_steps containing shape (batch_size)
@@ -371,8 +373,7 @@ class SummarizationModel(object):
     if self._hps.rl_training or self._hps.ac_training:
       loss_to_minimize = self._reinforce_shared_loss
       if self._hps.coverage:
-        #loss_to_minimize = self._reinforce_cov_total_loss
-        loss_to_minimize = self._pointer_cov_total_loss
+        loss_to_minimize = self._reinforce_cov_total_loss
     else:
       loss_to_minimize = self._pgen_loss
       if self._hps.coverage:
@@ -410,7 +411,18 @@ class SummarizationModel(object):
     tf.logging.info('Time to build graph: %i seconds', t1 - t0)
 
   def collect_dqn_transitions(self, sess, batch, step, max_art_oovs):
-    """Runs one training iteration. Returns a dictionary containing train op, summaries, loss, global_step and (optionally) coverage loss."""
+    """Get decoders' output and calculate reward at each decoding step, Q-function, value-function, and Advantage function.
+    Args:
+      sess: seq2seq model session
+      batch: current batch
+      step: training step
+      max_art_oovs: number of OOV tokens in current batch.
+
+    Returns:
+      transitions:
+        Experiences collected from decoders' outputs. (batch_size, k, max_dec_steps)
+    """
+
     feed_dict = self._make_feed_dict(batch)
     if self._hps.fixed_eta:
       feed_dict[self._eta] = self._hps.eta
@@ -437,8 +449,11 @@ class SummarizationModel(object):
       'greedy_search_sentences': self.greedy_search_sentences,
       'decoder_outputs': self.decoder_outputs,
     }
+    # Run the seq2seq model to get the decoders' output.
     ret_dict = sess.run(to_return, feed_dict)
-    # calculate reward
+
+
+    # Calculating reward, Q, V, and A values
     _t = time.time()
     ### TODO: do it in parallel???
     for _n, (sampled_sentence, greedy_search_sentence, target_sentence) in enumerate(zip(ret_dict['sampled_sentences'],ret_dict['greedy_search_sentences'], batch.target_batch)): # run batch_size time
@@ -446,19 +461,21 @@ class SummarizationModel(object):
       for i in range(self._hps.k):
         _ss = greedy_search_sentence[i] # reward is calculated over the best action through greedy search
         if self._hps.calculate_true_q:
+          # Collect Reward, Q, V, and A only when we want to train DDQN using true Q-estimation
           A, Q, V, R = self.caluclate_advantage_function(_ss, _gts, vsize_extended)
-          # TODO: select only the sampled word advantage for calculation
           self.r_values[_n,i,:,:] = R
           self.advantages[_n,i,:,:] = A
           self.q_values[_n,i,:,:] = Q
           self.v_values[_n,i,:] = V
         else:
+          # if using DDQN estimates, we only need to calculate the reward and later on estimate Q values.
           self.r_values[_n, i, :] = self.caluclate_single_reward(_ss, _gts) # len max_dec_steps
     tf.logging.info('seconds for dqn collection: {}'.format(time.time()-_t))
     trasitions = self.prepare_dqn_transitions(self._hps, ret_dict['decoder_outputs'], ret_dict['greedy_search_sentences'], vsize_extended)
     return trasitions
 
   def caluclate_advantage_function(self, _ss, _gts, vsize_extended):
+
     R = np.zeros((self._hps.max_dec_steps, vsize_extended)) # shape (max_dec_steps, vocab_size)
     Q = np.zeros((self._hps.max_dec_steps, vsize_extended)) # shape (max_dec_steps, vocab_size)
     for t in range(self._hps.max_dec_steps,0,-1):
@@ -474,52 +491,73 @@ class SummarizationModel(object):
     return A, Q, np.squeeze(V), R
 
   def caluclate_single_reward(self, _ss, _gts):
+    """Calculate the reward based on the reference and summary
+    Args:
+      _ss: List of model-generated tokens of size max_dec_steps
+      _gts: List of ground-truth tokens of size max_dec_steps
+
+    Returns:
+      reward:
+        List of the collected reward for each decoding step.
+    """
+
     return [self.calc_reward(t, _ss[0:t],_gts) for t in range(1,self._hps.max_dec_steps+1)]
 
   def prepare_dqn_transitions(self, hps, decoder_states, greedy_samples, vsize_extended):
-      # all variables must have the shape (batch_size, k, <=max_dec_steps, feature_len)
-      decoder_states = np.transpose(np.stack(decoder_states),[1,0,2]) # now of shape (batch_size, <=max_decoding_steps, hidden_dim)
-      greedy_samples = np.stack(greedy_samples) # now of shape (batch_size, <=max_decoding_steps)
+    """Prepare the experiences for this batch
+    Args:
+      hps: model paramters
+      decoder_states: decode output states (max_dec_steps, batch_size, hidden_dim)
+      greedy_samples: set of tokens selected through greedy selection, list of size batch_size each contains
+      max_dec_steps tokens.
 
-      dec_length = decoder_states.shape[1]
-      hidden_dim = decoder_states.shape[-1]
+    Returns:
+      transitions:
+        List of experiences collected for this batch (batch_size, k, max_dec_steps)
+    """
+    # all variables must have the shape (batch_size, k, <=max_dec_steps, feature_len)
+    decoder_states = np.transpose(np.stack(decoder_states),[1,0,2]) # now of shape (batch_size, <=max_dec_steps, hidden_dim)
+    greedy_samples = np.stack(greedy_samples) # now of shape (batch_size, <=max_dec_steps)
 
-      # modifying decoder state tensor to shape (batch_size, k, <=max_decoding_steps, hidden_dim)
-      _decoder_states = np.expand_dims(decoder_states, 1)
-      _decoder_states = np.concatenate([_decoder_states] * hps.k, axis=1) # shape (batch_size, k, <=max_decoding_steps, hidden_dim)
-      # TODO: if wanna use time as a categorical feature
-      #features = np.concatenate([self.times, _decoder_states], axis=-1) # shape (batch_size, k, <=max_decoding_steps, hidden_dim + <=max_decoding_steps)
-      features = _decoder_states # shape (batch_size, k, <=max_decoding_steps, hidden_dim)
+    dec_length = decoder_states.shape[1]
+    hidden_dim = decoder_states.shape[-1]
 
-      ### TODO: do it in parallel???
-      transitions = [] # (h_t, w_t, h_{t+1}, r_t, q_t, done)
-      for i in range(self._hps.batch_size):
-        for k in range(self._hps.k):
-          for t in range(self._hps.max_dec_steps):
-            action = greedy_samples[i,k,t]
-            done = (t==(self._hps.max_dec_steps-1) or action==3) # 3 is the id for [STOP] in our vocabularity to stop decoding
-            if done:
-              state = features[i,k,t]
-              state_prime = np.zeros((features.shape[-1]))
-              action_prime = 3 # 3 is the id for [STOP] in our vocabularity to stop decoding
-              if self._hps.calculate_true_q:
-                # We use the true q_values that we calculated to train DQN network.
-                transitions.append(Transition(state, action, state_prime, action_prime, self.r_values[i,k,t,action], self.q_values[i,k,t], True))
-              else:
-                # We update the q_values later, after collecting the q_estimates from DQN network.
-                transitions.append(Transition(state, action, state_prime, action_prime, self.r_values[i,k,t], np.zeros((vsize_extended)), True))
+    # modifying decoder state tensor to shape (batch_size, k, <=max_dec_steps, hidden_dim)
+    _decoder_states = np.expand_dims(decoder_states, 1)
+    _decoder_states = np.concatenate([_decoder_states] * hps.k, axis=1) # shape (batch_size, k, <=max_dec_steps, hidden_dim)
+    # TODO: if wanna use time as a categorical feature
+    #features = np.concatenate([self.times, _decoder_states], axis=-1) # shape (batch_size, k, <=max_dec_steps, hidden_dim + <=max_dec_steps)
+    features = _decoder_states # shape (batch_size, k, <=max_dec_steps, hidden_dim)
+
+    ### TODO: do it in parallel???
+    transitions = [] # (h_t, w_t, h_{t+1}, r_t, q_t, done)
+    for i in range(self._hps.batch_size):
+      for k in range(self._hps.k):
+        for t in range(self._hps.max_dec_steps):
+          action = greedy_samples[i,k,t]
+          done = (t==(self._hps.max_dec_steps-1) or action==3) # 3 is the id for [STOP] in our vocabularity to stop decoding
+          if done:
+            state = features[i,k,t]
+            state_prime = np.zeros((features.shape[-1]))
+            action_prime = 3 # 3 is the id for [STOP] in our vocabularity to stop decoding
+            if self._hps.calculate_true_q:
+              # We use the true q_values that we calculated to train DQN network.
+              transitions.append(Transition(state, action, state_prime, action_prime, self.r_values[i,k,t,action], self.q_values[i,k,t], True))
             else:
-              state = features[i,k,t]
-              state_prime = features[i,k,t+1]
-              action_prime = greedy_samples[i,k,t+1]
-              if self._hps.calculate_true_q:
-                # We use the true q_values that we calculated to train DQN network.
-                transitions.append(Transition(state, action, state_prime, action_prime,self.r_values[i,k,t,action], self.q_values[i,k,t], False))
-              else:
-                # We update the q_values later, after collecting the q_estimates from DQN network.
-                transitions.append(Transition(state, action, state_prime, action_prime,self.r_values[i,k,t], np.zeros((vsize_extended)), False))
+              # We update the q_values later, after collecting the q_estimates from DQN network.
+              transitions.append(Transition(state, action, state_prime, action_prime, self.r_values[i,k,t], np.zeros((vsize_extended)), True))
+          else:
+            state = features[i,k,t]
+            state_prime = features[i,k,t+1]
+            action_prime = greedy_samples[i,k,t+1]
+            if self._hps.calculate_true_q:
+              # We use the true q_values that we calculated to train DQN network.
+              transitions.append(Transition(state, action, state_prime, action_prime,self.r_values[i,k,t,action], self.q_values[i,k,t], False))
+            else:
+              # We update the q_values later, after collecting the q_estimates from DQN network.
+              transitions.append(Transition(state, action, state_prime, action_prime,self.r_values[i,k,t], np.zeros((vsize_extended)), False))
 
-      return transitions
+    return transitions
 
   def calc_reward(self, t, _ss, _gts): # optimizing based on ROUGE-2
     summary = ' '.join([str(k) for k in _ss[0:t]])

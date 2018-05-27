@@ -403,7 +403,7 @@ def scheduled_sampling(hps, sampling_probability, output, embedding, inp, alpha 
   # borrowed from https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/ScheduledEmbeddingTrainingHelper
   def soft_argmax(alpha, output):
     alpha_exp = tf.exp(alpha * output) # (batch_size, vocab_size)
-    one_hot_scores = alpha_exp / tf.reduce_sum(alpha_exp, axis=1) #(batch_size, vocab_size)
+    one_hot_scores = alpha_exp / tf.reshape(tf.reduce_sum(alpha_exp, axis=1),[-1,1]) #(batch_size, vocab_size)
     return one_hot_scores
 
   def soft_top_k(alpha, output, K):

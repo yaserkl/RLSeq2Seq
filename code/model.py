@@ -42,6 +42,15 @@ class SummarizationModel(object):
     self._vocab = vocab
 
   def reward_function(self, reference, summary, measure='rouge_l/f_score'):
+    """Calculate the reward between the reference and summary.
+
+    Args:
+      reference: A list of ids representing the ground-truth data
+      summary: A list of ids representing the model generated data
+
+    Returns:
+      A single value representing the evaluation value for reference and summary
+    """
     if 'rouge' in measure:
       return rouge([summary],[reference])[measure]
     else:
@@ -168,7 +177,7 @@ class SummarizationModel(object):
 
     Args:
       emb_dec_inputs: inputs to the decoder (word embeddings). A list of tensors shape (batch_size, emb_dim)
-
+      embedding: embedding matrix (vocab_size, emb_dim)
     Returns:
       outputs: List of tensors; the outputs of the decoder
       out_state: The final state of the decoder
@@ -250,6 +259,7 @@ class SummarizationModel(object):
 
       if hps.mode in ['train', 'eval']:
         if hps.ac_training or hps.rl_training:
+          # Get the sampled and greedy sentence from model output
           self.sampled_sentences = tf.unstack(tf.stack(self.samples,axis=2)) # list of length batch_size of (k, <=max_dec_steps) word indices
           self.greedy_search_sentences = tf.unstack(tf.stack(self.greedy_search_samples,axis=2)) # list of length batch_size of (k, <=max_dec_steps) word indices
         else:
@@ -280,7 +290,8 @@ class SummarizationModel(object):
       self._pgen_loss = _mask_and_avg(loss_per_step, self._dec_padding_mask)
       self.variable_summaries('pgen_loss', self._pgen_loss)
       if self._hps.ac_training:
-        #self._q_estimates = self._calc_final_q_estimates(self._q_estimates)
+        # Calculating Actor-Critic loss
+        # Here, we multiple the Q-estimation for each token to its respective probability
         loss_per_step = [] # will be list length k each containing a list of shape <=max_dec_steps which each has the shape (batch_size)
         q_loss_per_step = [] # will be list length k each containing a list of shape <=max_dec_steps which each has the shape (batch_size)
         batch_nums = tf.range(0, limit=self._hps.batch_size) # shape (batch_size)
@@ -301,18 +312,20 @@ class SummarizationModel(object):
           loss_per_step.append(loss_per_sample)
           q_loss_per_step.append(q_loss_per_sample)
         with tf.variable_scope('reinforce_loss'):
-          #### the following is only for monitoring purposes
-          self._rl_avg_logprobs = tf.reduce_mean([_mask_and_avg(loss_per_sample, self._dec_padding_mask) for loss_per_sample in loss_per_step])
           #### this is the actual loss
+          self._rl_avg_logprobs = tf.reduce_mean([_mask_and_avg(loss_per_sample, self._dec_padding_mask) for loss_per_sample in loss_per_step])
           self._rl_loss = tf.reduce_mean([_mask_and_avg(q_loss_per_sample, self._dec_padding_mask) for q_loss_per_sample in q_loss_per_step])
+          # Eq. 34 in https://arxiv.org/pdf/1805.09461.pdf
           self._reinforce_shared_loss = self._eta * self._rl_loss + (tf.constant(1.,dtype=tf.float32) - self._eta) * self._pgen_loss # equation 16 in https://arxiv.org/pdf/1705.04304.pdf
+          #### the following is only for monitoring purposes
           self.variable_summaries('reinforce_avg_logprobs', self._rl_avg_logprobs)
           self.variable_summaries('reinforce_loss', self._rl_loss)
           self.variable_summaries('reinforce_shared_loss', self._reinforce_shared_loss)
 
       if self._hps.rl_training:
-        #### calculating the rl loss according to Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
+        #### Calculating the reinforce loss according to Eq. 15 in https://arxiv.org/pdf/1705.04304.pdf
         loss_per_step = [] # will be list length max_dec_steps containing shape (batch_size)
+        rl_loss_per_step = [] # will be list length max_dec_steps containing shape (batch_size)
         batch_nums = tf.range(0, limit=self._hps.batch_size) # shape (batch_size)
         for dec_step, dist in enumerate(self.final_dists):
           targets = tf.squeeze(self.samples[dec_step]) # The indices of the sampled words. shape (batch_size)
@@ -320,11 +333,18 @@ class SummarizationModel(object):
           gold_probs = tf.gather_nd(dist, indices) # shape (batch_size). prob of correct words on this step
           losses = -tf.log(gold_probs)
           loss_per_step.append(losses)
+          # Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
+          # Equal reward for all tokens
+          rl_losses = -tf.log(gold_probs) * (self._sampled_sentence_r_values-self._greedy_sentence_r_values)
+          rl_loss_per_step.append(rl_losses)
         with tf.variable_scope('reinforce_loss'):
           r_diff = tf.reduce_mean(self._sampled_sentence_r_values - self._greedy_sentence_r_values)
           self._rl_avg_logprobs = _mask_and_avg(loss_per_step, self._dec_padding_mask)
-          self._rl_loss = r_diff * self._rl_avg_logprobs # Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
-          self._reinforce_shared_loss = self._eta * self._rl_loss + (tf.constant(1.,dtype=tf.float32) - self._eta) * self._pgen_loss # equation 16 in https://arxiv.org/pdf/1705.04304.pdf
+          self._rl_loss = _mask_and_avg(rl_loss_per_step, self._dec_padding_mask)
+          # We multiply the ROUGE difference of sampling vs greedy sentence to the loss of all tokens in the sequence
+          # Eq. 16 in https://arxiv.org/pdf/1705.04304.pdf and Eq. 34 in https://arxiv.org/pdf/1805.09461.pdf
+          self._reinforce_shared_loss = self._eta * self._rl_loss + (tf.constant(1.,dtype=tf.float32) - self._eta) * self._pgen_loss
+          #### the following is only for monitoring purposes
           self.variable_summaries('reinforce_avg_logprobs', self._rl_avg_logprobs)
           self.variable_summaries('reinforce_loss', self._rl_loss)
           self.variable_summaries('reinforce_sampled_r_value', tf.reduce_mean(self._sampled_sentence_r_values))

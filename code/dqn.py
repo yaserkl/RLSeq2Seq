@@ -30,28 +30,19 @@ class DQN(object):
         feed_dict[self._x] = batch._x
         feed_dict[self._y] = batch._y
         return feed_dict
-    '''
-    def _add_tl_layers(self):
-        h = tl.layers.InputLayer(self._x, name='{}_input_layer'.format(self._name_variable))
-        for i, layer in enumerate(self._hps.dqn_layers.split(',')):
-            h = tl.layers.DenseLayer(h, n_units = int(layer), act = tf.nn.relu, name='{}_h_{}'.format(self._name_variable, i))
 
-        self.advantage_layer = tl.layers.DenseLayer(h, n_units = self._hps.vocab_size, act = tf.nn.softmax, name='{}_advantage'.format(self._name_variable))
-        if self._hps.dueling_net:
-            self.value_layer = tl.layers.DenseLayer(h, n_units = 1, act = tf.identity, name='{}_value'.format(self._name_variable))
-            normalized_al = self.advantage_layer.outputs-tf.reshape(tf.reduce_mean(self.advantage_layer.outputs,axis=1),[-1,1]) # equation 9 in https://arxiv.org/pdf/1511.06581.pdf
-            value_extended = tf.concat([self.value_layer.outputs] * self._hps.vocab_size, axis=1)
-            self.output = value_extended + normalized_al
-        else:
-            self.output = self.advantage_layer.outputs
-    '''
     def _add_tf_layers(self):
+        """ Based on the dqn_layers flag, it creates multiple dense layers to do the regression. """
+
         h = tf.layers.dense(self._x, units = self._hps.dqn_input_feature_len, activation=tf.nn.relu, name='{}_input_layer'.format(self._name_variable))
         for i, layer in enumerate(self._hps.dqn_layers.split(',')):
             h = tf.layers.dense(h, units = int(layer), activation = tf.nn.relu, name='{}_h_{}'.format(self._name_variable, i))
 
         self.advantage_layer = tf.layers.dense(h, units = self._hps.vocab_size, activation = tf.nn.softmax, name='{}_advantage'.format(self._name_variable))
         if self._hps.dueling_net:
+            # in dueling net, we have two extra output layers; one for value function estimation
+            # and the other for advantage estimation, we then use the difference between these two layers
+            # to calculate the q-estimation
             self.value_layer = tf.layers.dense(h, units = 1, activation = tf.identity, name='{}_value'.format(self._name_variable))
             normalized_al = self.advantage_layer-tf.reshape(tf.reduce_mean(self.advantage_layer,axis=1),[-1,1]) # equation 9 in https://arxiv.org/pdf/1511.06581.pdf
             value_extended = tf.concat([self.value_layer] * self._hps.vocab_size, axis=1)
@@ -60,6 +51,7 @@ class DQN(object):
             self.output = self.advantage_layer
 
     def _add_train_op(self):
+        # In regression, the objective loss is Mean Squared Error (MSE).
         self.loss = tf.losses.mean_squared_error(labels = self._y, predictions = self.output)
 
         tvars = tf.trainable_variables()
@@ -80,6 +72,7 @@ class DQN(object):
         self.variable_summaries('dqn_loss',self.loss)
 
     def _add_update_weights_op(self):
+        """ Updates the weight of the target network based on the current network. """
         self.model_trainables = tf.trainable_variables(scope='{}_relay_network'.format(self._name_variable)) # target variables
         self._new_trainables = [tf.placeholder(tf.float32, None,name='trainables_{}'.format(i)) for i in range(len(self.model_trainables))]
         self.assign_ops = []
@@ -98,7 +91,6 @@ class DQN(object):
         with tf.variable_scope('{}_relay_network'.format(self._name_variable)), tf.device("/gpu:{}".format(self._hps.dqn_gpu_num)):
             self.global_step = tf.Variable(0, name='global_step', trainable=False)
             self._add_placeholders()
-            #self._add_tl_layers()
             self._add_tf_layers()
             self._add_train_op()
             self._add_update_weights_op()

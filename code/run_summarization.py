@@ -460,20 +460,23 @@ class Seq2Seq(object):
         self.dqn_summary_writer.flush()
       if self.train_step > FLAGS.max_iter: break
 
-  # training the ddqn network
   def dqn_training(self):
+    """ training the DDQN network."""
     try:
       while True:
         if self.dqn_train_step == FLAGS.dqn_pretrain_steps: raise SystemExit()
         _t = time.time()
         self.avg_dqn_loss = []
         avg_dqn_target_loss = []
+        # Get a batch of size dqn_batch_size from replay buffer to train the model
         dqn_batch = self.replay_buffer.next_batch()
         if dqn_batch is None:
-          tf.logging.info('replay buffer not loaded enough yet...go get a pizza')
+          tf.logging.info('replay buffer not loaded enough yet...')
           time.sleep(60)
           continue
+        # Run train step for Current DQN model and collect the results
         dqn_results = self.dqn.run_train_steps(self.dqn_sess, dqn_batch)
+        # Run test step for Target DQN model and collect the results and monitor the difference in loss between the two
         dqn_target_results = self.dqn_target.run_test_steps(self.dqn_sess, x=dqn_batch._x, y=dqn_batch._y, return_loss=True)
         self.dqn_train_step = dqn_results['global_step']
         self.dqn_summary_writer.add_summary(dqn_results['summaries'], self.dqn_train_step) # write the summaries
@@ -481,7 +484,6 @@ class Seq2Seq(object):
         avg_dqn_target_loss.append(dqn_target_results['loss'])
         self.dqn_train_step = self.dqn_train_step + 1
         tf.logging.info('seconds for training dqn model: {}'.format(time.time()-_t))
-        #if trained: # update only when training is done
         # UPDATING TARGET DDQN NETWORK WITH CURRENT MODEL
         with self.dqn_graph.as_default():
           current_model_weights = self.dqn_sess.run([self.dqn.model_trainables])[0] # get weights of current model

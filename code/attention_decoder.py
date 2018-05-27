@@ -187,6 +187,7 @@ def attention_decoder(_hps,
         decoder_features = linear(decoder_state, attention_vec_size, True) # shape (batch_size, attention_vec_size)
         decoder_features = tf.expand_dims(tf.expand_dims(decoder_features, 1), 1) # reshape to (batch_size, 1, 1, attention_vec_size)
 
+        # We can't have coverage with matrix attention
         if not _hps.matrix_attention and use_coverage and coverage is not None: # non-first step of coverage
           # Multiply coverage vector by w_c to get coverage_features.
           coverage_features = nn_ops.conv2d(coverage, w_c, [1, 1, 1, 1], "SAME") # c has shape (batch_size, max_enc_steps, 1, attention_vec_size)
@@ -271,7 +272,6 @@ def attention_decoder(_hps,
       _prev_decoder_features = nn_ops.conv2d(_decoder_states, W_h_d, [1, 1, 1, 1], "SAME") # shape (batch_size,len(decoder_states),1,attention_vec_size)
       with variable_scope.variable_scope("DecoderAttention"):
         # Pass the decoder state through a linear layer (this is W_s s_t + b_attn in the paper)
-        #decoder_features = linear(decoder_state, attention_dec_vec_size, True) # shape (batch_size, attention_dec_vec_size)
         try:
           decoder_features = linear(decoder_state, attention_dec_vec_size, True) # shape (batch_size, attention_vec_size)
           decoder_features = tf.expand_dims(tf.expand_dims(decoder_features, 1), 1) # reshape to (batch_size, 1, 1, attention_dec_vec_size)
@@ -382,6 +382,7 @@ def attention_decoder(_hps,
 
       final_dists.append(final_dist)
       if _hps.rl_training or _hps.ac_training or _hps.scheduled_sampling:
+        # get the sampled token and greedy token
         one_hot_k_samples = tf.distributions.Multinomial(total_count=1., probs=final_dist).sample(_hps.k) # sample once according to https://arxiv.org/pdf/1705.04304.pdf, size (k,batch_size,extended_vsize)
         k_argmax = tf.argmax(one_hot_k_samples,axis=2,output_type=tf.int32) # (k, batch_size)
         k_sample = tf.transpose(k_argmax) # this will take the final_dist and sample from it for a total count of k (k samples), the result is of shape (batch_size,k)
@@ -389,6 +390,7 @@ def attention_decoder(_hps,
         greedy_search_samples.append(greedy_search_sample)
         samples.append(k_sample)
       if _hps.mode in ['train','eval'] and _hps.scheduled_sampling:
+        # modify the input to next decoder using scheduled sampling
         inp = scheduled_sampling(_hps, sampling_probability, final_dist, embedding, inp, alpha)
 
     # If using coverage, reshape it
@@ -398,9 +400,9 @@ def attention_decoder(_hps,
   return outputs, state, attn_dists, p_gens, coverage, vocab_scores, final_dists, samples, greedy_search_samples, temporal_e
 
 def scheduled_sampling(hps, sampling_probability, output, embedding, inp, alpha = 0):
+  # borrowed ideas from https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/ScheduledEmbeddingTrainingHelper
   vocab_size = embedding.get_shape()[0].value
 
-  # borrowed from https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/ScheduledEmbeddingTrainingHelper
   def soft_argmax(alpha, output):
     alpha_exp = tf.exp(alpha * output) # (batch_size, vocab_size)
     one_hot_scores = alpha_exp / tf.reshape(tf.reduce_sum(alpha_exp, axis=1),[-1,1]) #(batch_size, vocab_size)

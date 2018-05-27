@@ -136,8 +136,6 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
 
     if FLAGS.ac_training:
       with dqn_graph.as_default():
-        #transitions = [Transition(state, None, None, None, None, None, None) for state in decoder_output]
-        #b = ReplayBuffer.create_batch(dqn_hps, transitions,len(transitions), max_art_oovs = batch.max_art_oovs)
         dqn_results = dqn.run_test_steps(dqn_sess, x=decoder_output)
         q_estimates = dqn_results['estimates'] # shape (len(transitions), vocab_size)
         # we use the q_estimate of UNK token for all the OOV tokens

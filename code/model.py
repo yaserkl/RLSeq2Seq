@@ -475,13 +475,28 @@ class SummarizationModel(object):
     return trasitions
 
   def caluclate_advantage_function(self, _ss, _gts, vsize_extended):
+    """Collect R, Q, V, and A for the given sequence of ground-truth and generated summary
+    Args:
+      _ss: A list of generated tokens (max_dec_steps) 
+      _gts: A list of ground-truth tokens (max_dec_steps)
+      vsize_extended: size of the extended vocab, vocab_size + max_art_oovs
+
+    Returns:
+      R: Reward values (max_dec_steps, vsize_extended)
+      Q: Q-values (max_dec_steps, vsize_extended)
+      V: Value function (max_dec_steps, vsize_extended)
+      A: Advantage values (max_dec_steps, vsize_extended)
+      
+    """
 
     R = np.zeros((self._hps.max_dec_steps, vsize_extended)) # shape (max_dec_steps, vocab_size)
     Q = np.zeros((self._hps.max_dec_steps, vsize_extended)) # shape (max_dec_steps, vocab_size)
     for t in range(self._hps.max_dec_steps,0,-1):
       R[t-1][:] = self.reward(t, _ss[0:t],_gts, vsize_extended)
+      # We find true Q-values.
+      # Eq. 30 in https://arxiv.org/pdf/1805.09461.pdf
       try:
-        Q[t-1][:] = R[t-1][:] + self._hps.gamma * Q[t,:].max() # Equation 10
+        Q[t-1][:] = R[t-1][:] + self._hps.gamma * Q[t,:].max()
       except:
         Q[t-1][:] = R[t-1][:]
 
@@ -501,7 +516,7 @@ class SummarizationModel(object):
         List of the collected reward for each decoding step.
     """
 
-    return [self.calc_reward(t, _ss[0:t],_gts) for t in range(1,self._hps.max_dec_steps+1)]
+    return [self.calc_reward(t, _ss,_gts) for t in range(1,self._hps.max_dec_steps+1)]
 
   def prepare_dqn_transitions(self, hps, decoder_states, greedy_samples, vsize_extended):
     """Prepare the experiences for this batch
@@ -559,13 +574,30 @@ class SummarizationModel(object):
 
     return transitions
 
-  def calc_reward(self, t, _ss, _gts): # optimizing based on ROUGE-2
+  def calc_reward(self, t, _ss, _gts): # optimizing based on ROUGE-L
+    """This function will calculate partial reward, meaning we calculate the reward using
+    reward_function(_ss[0:t], _gts). Therefore if we have the following two inputs:
+    _ss = [A, B, C, D, E]
+    _gts = [A, B, D, E, F]
+    and we want to collect the reward based on ROUGE_L at time t = 2, it will be as follows:
+    ROUGE_L([A, B, C, [UNK], [UNK]], [A, B, D, E, F])
+    Note that we replace all tokens for time t>2 with [UNK]
+    Args:
+      t: decoder time step
+      _ss: List of model-generated tokens of size max_dec_steps
+      _gts: List of ground-truth tokens of size max_dec_steps
+
+    Returns:
+      reward: The calculated reward 
+    """
+
     summary = ' '.join([str(k) for k in _ss[0:t]])
     reference = ' '.join([str(k) for k in _gts])
     reward = self.reward_function(reference, summary, self._hps.reward_function)
     return reward
 
   def reward(self, t, _ss, _gts, vsize_extended): # shape (vocab_size)
+    """ A wrapper for calculating the reward. """
     first_case = np.append(_ss[0:t],[0]) # our special character is '[UNK]' which has the id of 0 in our vocabulary
     special_reward = self.calc_reward(t, first_case, _gts)
     reward = [special_reward for _ in range(vsize_extended)]
@@ -576,6 +608,15 @@ class SummarizationModel(object):
     return reward
 
   def run_train_steps(self, sess, batch, step, q_estimates=None):
+    """ Run train steps
+    Args:
+      sess: seq2seq session
+      batch: current batch
+      step: training step
+      q_estimates = if using Actor-Critic model, this variable will feed
+      the Q-estimates collected from Critic and use it to update the model
+      loss
+    """
     feed_dict = self._make_feed_dict(batch)
     if self._hps.ac_training or self._hps.rl_training:
       if self._hps.fixed_eta:
@@ -588,7 +629,7 @@ class SummarizationModel(object):
       else:
         feed_dict[self._sampling_probability] = min(step * self._hps.sampling_probability,1.) # linear decay function
       ranges = [np.exp(float(step) * self._hps.alpha),np.finfo(np.float64).max] # to avoid overflow
-      feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function        
+      feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function
 
     if self._hps.ac_training:
       self.q_estimates = q_estimates
@@ -602,6 +643,9 @@ class SummarizationModel(object):
         'sampled_sentences': self.sampled_sentences,
         'greedy_search_sentences': self.greedy_search_sentences
       }
+      # We need to run the whole model once to collect the sampled sentence and greedy sentence
+      # and then calculate the reward, we then feed these values to the model again to update the
+      # loss gradient.
       ret_dict = sess.run(to_return, feed_dict)
       # calculate reward
       for sampled_sentence, greedy_search_sentence, target_sentence in zip(ret_dict['sampled_sentences'],ret_dict['greedy_search_sentences'],batch.target_batch):
@@ -638,10 +682,19 @@ class SummarizationModel(object):
       to_return['rl_loss']= self._rl_loss
       to_return['rl_avg_logprobs']= self._rl_avg_logprobs
 
+    # We feed the collected reward and feed it back to model to update the loss
     return sess.run(to_return, feed_dict)
 
   def run_eval_step(self, sess, batch, step, q_estimates=None):
-    """Runs one training iteration. Returns a dictionary containing train op, summaries, loss, global_step and (optionally) coverage loss."""
+    """ Run eval steps, same as training with difference that we don't update the loss, here
+    Args:
+      sess: seq2seq session
+      batch: current batch
+      step: training step
+      q_estimates = if using Actor-Critic model, this variable will feed
+      the Q-estimates collected from Critic and use it to update the model
+      loss
+    """
     feed_dict = self._make_feed_dict(batch)
     if self._hps.ac_training or self._hps.rl_training:
       if self._hps.fixed_eta:

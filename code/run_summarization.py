@@ -46,8 +46,8 @@ from tensorflow.python.ops.distributions import bernoulli
 FLAGS = tf.app.flags.FLAGS
 
 # Where to find data
-tf.app.flags.DEFINE_string('data_path', '', 'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.')
-tf.app.flags.DEFINE_string('vocab_path', '', 'Path expression to text vocabulary file.')
+tf.app.flags.DEFINE_string('data_path', os.path.expanduser('~/data/cnn_dm/finished_files/chunked/train_*'), 'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.')
+tf.app.flags.DEFINE_string('vocab_path', os.path.expanduser('~/data/cnn_dm/finished_files/vocab'), 'Path expression to text vocabulary file.')
 
 # Important settings
 tf.app.flags.DEFINE_string('mode', 'train', 'must be one of train/eval/decode')
@@ -55,8 +55,8 @@ tf.app.flags.DEFINE_boolean('single_pass', False, 'For decode mode only. If True
 tf.app.flags.DEFINE_integer('decode_after', 0, 'skip already decoded docs')
 
 # Where to save output
-tf.app.flags.DEFINE_string('log_root', '', 'Root directory for all logging.')
-tf.app.flags.DEFINE_string('exp_name', '', 'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
+tf.app.flags.DEFINE_string('log_root', os.path.expanduser('~/working_dir/cnn_dm/RLSeq2Seq'), 'Root directory for all logging.')
+tf.app.flags.DEFINE_string('exp_name', 'intradecoder-temporalattention-withpretraining', 'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
 
 # Hyperparameters
 tf.app.flags.DEFINE_integer('enc_hidden_dim', 256, 'dimension of RNN hidden states')
@@ -67,7 +67,7 @@ tf.app.flags.DEFINE_integer('max_enc_steps', 400, 'max timesteps of encoder (max
 tf.app.flags.DEFINE_integer('max_dec_steps', 100, 'max timesteps of decoder (max summary tokens)')
 tf.app.flags.DEFINE_integer('beam_size', 4, 'beam size for beam search decoding.')
 tf.app.flags.DEFINE_integer('min_dec_steps', 35, 'Minimum sequence length of generated summary. Applies only for beam search decoding mode')
-tf.app.flags.DEFINE_integer('max_iter', 55000, 'max number of iterations')
+tf.app.flags.DEFINE_integer('max_iter', 20000, 'max number of iterations')
 tf.app.flags.DEFINE_integer('vocab_size', 50000, 'Size of vocabulary. These will be read from the vocabulary file in order. If the vocabulary file contains fewer words than this number, or if this number is set to 0, will take all words in the vocabulary file.')
 tf.app.flags.DEFINE_float('lr', 0.15, 'learning rate')
 tf.app.flags.DEFINE_float('adagrad_init_acc', 0.1, 'initial accumulator value for Adagrad')
@@ -83,8 +83,8 @@ tf.app.flags.DEFINE_boolean('pointer_gen', True, 'If True, use pointer-generator
 # Pointer-generator with Self-Critic policy gradient: https://arxiv.org/pdf/1705.04304.pdf
 tf.app.flags.DEFINE_boolean('rl_training', False, 'Use policy-gradient training by collecting rewards at the end of sequence.')
 tf.app.flags.DEFINE_boolean('convert_to_reinforce_model', False, 'Convert a pointer model to a reinforce model. Turn this on and run in train mode. Your current training model will be copied to a new version (same name with _cov_init appended) that will be ready to run with coverage flag turned on, for the coverage training stage.')
-tf.app.flags.DEFINE_boolean('intradecoder', False, 'Use intradecoder attention or not')
-tf.app.flags.DEFINE_boolean('use_temporal_attention', False, 'Whether to use temporal attention or not')
+tf.app.flags.DEFINE_boolean('intradecoder', True, 'Use intradecoder attention or not')
+tf.app.flags.DEFINE_boolean('use_temporal_attention', True, 'Whether to use temporal attention or not')
 tf.app.flags.DEFINE_boolean('matrix_attention', False, 'Use matrix attention, Eq. 2 https://arxiv.org/pdf/1705.04304.pdf')
 tf.app.flags.DEFINE_float('eta', 0, 'RL/MLE scaling factor, 1 means use RL loss, 0 means use MLE loss')
 tf.app.flags.DEFINE_boolean('fixed_eta', False, 'Use fixed value for eta or adaptive based on global step')
@@ -96,7 +96,7 @@ tf.app.flags.DEFINE_boolean('ac_training', False, 'Use Actor-Critic learning by 
 tf.app.flags.DEFINE_boolean('dqn_scheduled_sampling', False, 'Whether to use scheduled sampling to use estimates of dqn model vs the actual q-estimates values')
 tf.app.flags.DEFINE_string('dqn_layers', '512,256,128', 'DQN dense hidden layer size, will create three dense layers with 512, 256, and 128 size')
 tf.app.flags.DEFINE_integer('dqn_replay_buffer_size', 100000, 'Size of the replay buffer')
-tf.app.flags.DEFINE_integer('dqn_batch_size', 100, 'Batch size for training the DDQN model')
+tf.app.flags.DEFINE_integer('dqn_batch_size', 80, 'Batch size for training the DDQN model')
 tf.app.flags.DEFINE_integer('dqn_target_update', 10000, 'Update target Q network every 10000 steps')
 tf.app.flags.DEFINE_integer('dqn_sleep_time', 2, 'Train DDQN model every 2 seconds')
 tf.app.flags.DEFINE_integer('dqn_gpu_num', 0, 'GPU number to train the DDQN')
@@ -677,15 +677,15 @@ class Seq2Seq(object):
     # Make a namedtuple hps, containing the values of the hyperparameters that the model needs
 
     hparam_list = ['mode', 'lr', 'gpu_num',
-    #'sampled_greedy_flag', 
-    'gamma', 'eta', 
-    'fixed_eta', 'reward_function', 'intradecoder', 
+    #'sampled_greedy_flag',
+    'gamma', 'eta',
+    'fixed_eta', 'reward_function', 'intradecoder',
     'use_temporal_attention', 'ac_training','rl_training', 'matrix_attention', 'calculate_true_q',
-    'enc_hidden_dim', 'dec_hidden_dim', 'k', 
+    'enc_hidden_dim', 'dec_hidden_dim', 'k',
     'scheduled_sampling', 'sampling_probability','fixed_sampling_probability',
     'alpha', 'hard_argmax', 'greedy_scheduled_sampling',
-    'adagrad_init_acc', 'rand_unif_init_mag', 
-    'trunc_norm_init_std', 'max_grad_norm', 
+    'adagrad_init_acc', 'rand_unif_init_mag',
+    'trunc_norm_init_std', 'max_grad_norm',
     'emb_dim', 'batch_size', 'max_dec_steps', 'max_enc_steps',
     'dqn_scheduled_sampling', 'dqn_sleep_time', 'E2EBackProp',
     'coverage', 'cov_loss_wt', 'pointer_gen']
@@ -698,10 +698,10 @@ class Seq2Seq(object):
     self.hps = namedtuple("HParams", hps_dict.keys())(**hps_dict)
     # creating all the required parameters for DDQN model.
     if FLAGS.ac_training:
-      hparam_list = ['lr', 'dqn_gpu_num', 
-      'dqn_layers', 
-      'dqn_replay_buffer_size', 
-      'dqn_batch_size', 
+      hparam_list = ['lr', 'dqn_gpu_num',
+      'dqn_layers',
+      'dqn_replay_buffer_size',
+      'dqn_batch_size',
       'dqn_target_update',
       'dueling_net',
       'dqn_polyak_averaging',
@@ -721,7 +721,7 @@ class Seq2Seq(object):
 
     tf.set_random_seed(111) # a seed value for randomness
 
-    if self.hps.mode == 'train':
+    if self.hps.mode.value == 'train':
       print "creating model..."
       self.model = SummarizationModel(self.hps, self.vocab)
       if FLAGS.ac_training:
@@ -730,13 +730,13 @@ class Seq2Seq(object):
         # target DQN with paramters \Psi^{\prime}
         self.dqn_target = DQN(self.dqn_hps,'target')
       self.setup_training()
-    elif self.hps.mode == 'eval':
+    elif self.hps.mode.value == 'eval':
       self.model = SummarizationModel(self.hps, self.vocab)
       if FLAGS.ac_training:
         self.dqn = DQN(self.dqn_hps,'current')
         self.dqn_target = DQN(self.dqn_hps,'target')
       self.run_eval()
-    elif self.hps.mode == 'decode':
+    elif self.hps.mode.value == 'decode':
       decode_model_hps = self.hps  # This will be the hyperparameters for the decoder model
       decode_model_hps = self.hps._replace(max_dec_steps=1) # The model is configured with max_dec_steps=1 because we only ever run one step of the decoder at a time (to do beam search). Note that the batcher is initialized with max_dec_steps equal to e.g. 100 because the batches need to contain the full summaries
       model = SummarizationModel(decode_model_hps, self.vocab)
@@ -774,9 +774,11 @@ class Seq2Seq(object):
       result = result1 + result2
       return result1 + result2
 
+
 def main(unused_argv):
   seq2seq = Seq2Seq()
   seq2seq.main(unused_argv)
+
 
 if __name__ == '__main__':
   tf.app.run()

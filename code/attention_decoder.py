@@ -46,19 +46,19 @@ def _calc_final_dist(_hps, v_size, _max_art_oovs, _enc_batch_extend_vocab, p_gen
 
     # Concatenate some zeros to each vocabulary dist, to hold the probabilities for in-article OOV words
     extended_vsize = v_size + _max_art_oovs # the maximum (over the batch) size of the extended vocabulary
-    extra_zeros = tf.zeros((_hps.batch_size, _max_art_oovs))
+    extra_zeros = tf.zeros((_hps.batch_size.value, _max_art_oovs))
     vocab_dists_extended = tf.concat(axis=1, values=[vocab_dist, extra_zeros]) # list length max_dec_steps of shape (batch_size, extended_vsize)
 
     # Project the values in the attention distributions onto the appropriate entries in the final distributions
     # This means that if a_i = 0.1 and the ith encoder word is w, and w has index 500 in the vocabulary, then we add 0.1 onto the 500th entry of the final distribution
     # This is done for each decoder timestep.
     # This is fiddly; we use tf.scatter_nd to do the projection
-    batch_nums = tf.range(0, limit=_hps.batch_size) # shape (batch_size)
+    batch_nums = tf.range(0, limit=_hps.batch_size.value) # shape (batch_size)
     batch_nums = tf.expand_dims(batch_nums, 1) # shape (batch_size, 1)
     attn_len = tf.shape(_enc_batch_extend_vocab)[1] # number of states we attend over
     batch_nums = tf.tile(batch_nums, [1, attn_len]) # shape (batch_size, attn_len)
     indices = tf.stack( (batch_nums, _enc_batch_extend_vocab), axis=2) # shape (batch_size, enc_t, 2)
-    shape = [_hps.batch_size, extended_vsize]
+    shape = [_hps.batch_size.value, extended_vsize]
     attn_dists_projected = tf.scatter_nd(indices, attn_dist, shape) # list length max_dec_steps (batch_size, extended_vsize)
 
     # Add the vocab distributions and the copy distributions together to get the final distributions
@@ -147,15 +147,15 @@ def attention_decoder(_hps,
     attention_vec_size = attn_size
 
     # Get the weight matrix W_h and apply it to each encoder state to get (W_h h_i), the encoder features
-    if _hps.matrix_attention:
+    if _hps.matrix_attention.value:
       w_attn = variable_scope.get_variable("w_attn", [attention_vec_size, attention_vec_size])
-      if _hps.intradecoder:
+      if _hps.intradecoder.value:
         w_dec_attn = variable_scope.get_variable("w_dec_attn", [decoder_attn_size, decoder_attn_size])
     else:
       W_h = variable_scope.get_variable("W_h", [1, 1, attn_size, attention_vec_size])
       v = variable_scope.get_variable("v", [attention_vec_size])
       encoder_features = nn_ops.conv2d(_enc_states, W_h, [1, 1, 1, 1], "SAME") # shape (batch_size,max_enc_steps,1,attention_vec_size)
-    if _hps.intradecoder:
+    if _hps.intradecoder.value:
       W_h_d = variable_scope.get_variable("W_h_d", [1, 1, decoder_attn_size, decoder_attn_size])
       v_d = variable_scope.get_variable("v_d", [decoder_attn_size])
 
@@ -188,7 +188,7 @@ def attention_decoder(_hps,
         decoder_features = tf.expand_dims(tf.expand_dims(decoder_features, 1), 1) # reshape to (batch_size, 1, 1, attention_vec_size)
 
         # We can't have coverage with matrix attention
-        if not _hps.matrix_attention and use_coverage and coverage is not None: # non-first step of coverage
+        if not _hps.matrix_attention.value and use_coverage and coverage is not None: # non-first step of coverage
           # Multiply coverage vector by w_c to get coverage_features.
           coverage_features = nn_ops.conv2d(coverage, w_c, [1, 1, 1, 1], "SAME") # c has shape (batch_size, max_enc_steps, 1, attention_vec_size)
           # Calculate v^T tanh(W_h h_i + W_s s_t + w_c c_i^t + b_attn)
@@ -197,7 +197,7 @@ def attention_decoder(_hps,
           masked_sums = tf.reduce_sum(masked_e, axis=1) # shape (batch_size)
           masked_e = masked_e / tf.reshape(masked_sums, [-1, 1])
           # Equation 3 in 
-          if _hps.use_temporal_attention:
+          if _hps.use_temporal_attention.value:
             try:
               len_temporal_e = temporal_e.get_shape()[0].value
             except:
@@ -214,7 +214,7 @@ def attention_decoder(_hps,
           # Update coverage vector
           coverage += array_ops.reshape(attn_dist, [batch_size, -1, 1, 1])
         else:
-          if _hps.matrix_attention:
+          if _hps.matrix_attention.value:
             # Calculate h_d * W_attn * h_i, equation 2 in https://arxiv.org/pdf/1705.04304.pdf
             _dec_attn = tf.unstack(tf.matmul(tf.squeeze(decoder_features,axis=[1,2]),w_attn),axis=0) # batch_size * (attention_vec_size)
             _enc_states_lst = tf.unstack(tf.squeeze(_enc_states,axis=2),axis=0) # batch_size * (max_enc_steps, attention_vec_size)
@@ -227,7 +227,7 @@ def attention_decoder(_hps,
             masked_e = nn_ops.softmax(e_not_masked) * enc_padding_mask # (batch_size, max_enc_steps)
             masked_sums = tf.reduce_sum(masked_e, axis=1) # shape (batch_size)
             masked_e = masked_e / tf.reshape(masked_sums, [-1, 1])
-          if _hps.use_temporal_attention:
+          if _hps.use_temporal_attention.value:
             try:
               len_temporal_e = temporal_e.get_shape()[0].value
             except:
@@ -276,7 +276,7 @@ def attention_decoder(_hps,
           decoder_features = linear(decoder_state, attention_dec_vec_size, True) # shape (batch_size, attention_vec_size)
           decoder_features = tf.expand_dims(tf.expand_dims(decoder_features, 1), 1) # reshape to (batch_size, 1, 1, attention_dec_vec_size)
           # Calculate v^T tanh(W_h h_i + W_s s_t + b_attn)
-          if _hps.matrix_attention:
+          if _hps.matrix_attention.value:
             # Calculate h_d * W_attn * h_d, equation 6 in https://arxiv.org/pdf/1705.04304.pdf
             _dec_attn = tf.matmul(tf.squeeze(decoder_features),w_dec_attn) # (batch_size, decoder_attn_size)
             _dec_states_lst = tf.unstack(tf.reshape(_prev_decoder_features,[batch_size,-1,decoder_attn_size])) # batch_size * (len(decoder_states), decoder_attn_size)
@@ -316,7 +316,7 @@ def attention_decoder(_hps,
     if initial_state_attention: # true in decode mode
       # Re-calculate the context vector from the previous step so that we can pass it through a linear layer with this step's input to get a modified version of the input
       context_vector, _, coverage, _ = attention(_dec_in_state, tf.stack(prev_encoder_es,axis=0), coverage) # in decode mode, this is what updates the coverage vector
-      if _hps.intradecoder:
+      if _hps.intradecoder.value:
         context_decoder_vector, _ = intra_decoder_attention(_dec_in_state, tf.stack(prev_decoder_outputs,axis=0))
     for i, inp in enumerate(emb_dec_inputs):
       tf.logging.info("Adding attention_decoder timestep %i of %i", i, len(emb_dec_inputs))
@@ -336,17 +336,17 @@ def attention_decoder(_hps,
       if i == 0 and initial_state_attention:  # always true in decode mode
         with variable_scope.variable_scope(variable_scope.get_variable_scope(), reuse=True): # you need this because you've already run the initial attention(...) call
           context_vector, attn_dist, _, masked_e = attention(state, tf.stack(prev_encoder_es,axis=0), coverage) # don't allow coverage to update
-          if _hps.intradecoder:
+          if _hps.intradecoder.value:
             context_decoder_vector, _ = intra_decoder_attention(state, tf.stack(prev_decoder_outputs,axis=0))
       else:
         context_vector, attn_dist, coverage, masked_e = attention(state, tf.stack(temporal_e,axis=0), coverage)
-        if _hps.intradecoder:
+        if _hps.intradecoder.value:
           context_decoder_vector, _ = intra_decoder_attention(state, tf.stack(outputs,axis=0))
       attn_dists.append(attn_dist)
       temporal_e.append(masked_e)
 
       with variable_scope.variable_scope("combined_context"):
-        if _hps.intradecoder:
+        if _hps.intradecoder.value:
           context_vector = linear([context_vector] + [context_decoder_vector], attn_size, False)
       # Calculate p_gen
       if pointer_gen:
@@ -363,8 +363,8 @@ def attention_decoder(_hps,
 
       # Add the output projection to obtain the vocabulary distribution
       with tf.variable_scope('output_projection'):
-        trunc_norm_init = tf.truncated_normal_initializer(stddev=_hps.trunc_norm_init_std)
-        w_out = tf.get_variable('w', [_hps.dec_hidden_dim, v_size], dtype=tf.float32, initializer=trunc_norm_init)
+        trunc_norm_init = tf.truncated_normal_initializer(stddev=_hps.trunc_norm_init_std.value)
+        w_out = tf.get_variable('w', [_hps.dec_hidden_dim.value, v_size], dtype=tf.float32, initializer=trunc_norm_init)
         #w_t_out = tf.transpose(w)
         v_out = tf.get_variable('v', [v_size], dtype=tf.float32, initializer=trunc_norm_init)
         if i > 0:
@@ -375,21 +375,21 @@ def attention_decoder(_hps,
         vocab_dists.append(vocab_dist) # The vocabulary distributions. List length max_dec_steps of (batch_size, vsize) arrays. The words are in the order they appear in the vocabulary file.
 
       # For pointer-generator model, calc final distribution from copy distribution and vocabulary distribution
-      if _hps.pointer_gen:
+      if _hps.pointer_gen.value:
         final_dist = _calc_final_dist(_hps, v_size, _max_art_oovs, _enc_batch_extend_vocab, p_gen, vocab_dist, attn_dist)
       else: # final distribution is just vocabulary distribution
         final_dist = vocab_dist
 
       final_dists.append(final_dist)
-      if _hps.rl_training or _hps.ac_training or _hps.scheduled_sampling:
+      if _hps.rl_training.value or _hps.ac_training.value or _hps.scheduled_sampling.value:
         # get the sampled token and greedy token
-        one_hot_k_samples = tf.distributions.Multinomial(total_count=1., probs=final_dist).sample(_hps.k) # sample once according to https://arxiv.org/pdf/1705.04304.pdf, size (k,batch_size,extended_vsize)
+        one_hot_k_samples = tf.distributions.Multinomial(total_count=1., probs=final_dist).sample(_hps.k.value) # sample once according to https://arxiv.org/pdf/1705.04304.pdf, size (k,batch_size,extended_vsize)
         k_argmax = tf.argmax(one_hot_k_samples,axis=2,output_type=tf.int32) # (k, batch_size)
         k_sample = tf.transpose(k_argmax) # this will take the final_dist and sample from it for a total count of k (k samples), the result is of shape (batch_size,k)
-        greedy_search_prob, greedy_search_sample = tf.nn.top_k(final_dist, k=_hps.k) # (batch_size, k)
+        greedy_search_prob, greedy_search_sample = tf.nn.top_k(final_dist, k=_hps.k.value) # (batch_size, k)
         greedy_search_samples.append(greedy_search_sample)
         samples.append(k_sample)
-      if _hps.mode in ['train','eval'] and _hps.scheduled_sampling:
+      if _hps.mode.value in ['train','eval'] and _hps.scheduled_sampling.value:
         # modify the input to next decoder using scheduled sampling
         inp = scheduled_sampling(_hps, sampling_probability, final_dist, embedding, inp, alpha)
 

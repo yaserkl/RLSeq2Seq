@@ -161,9 +161,9 @@ class Batch(object):
 
     # Initialize the numpy arrays
     # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
-    self.enc_batch = np.zeros((hps.batch_size, max_enc_seq_len), dtype=np.int32)
-    self.enc_lens = np.zeros((hps.batch_size), dtype=np.int32)
-    self.enc_padding_mask = np.zeros((hps.batch_size, max_enc_seq_len), dtype=np.float32)
+    self.enc_batch = np.zeros((hps.batch_size.value, max_enc_seq_len), dtype=np.int32)
+    self.enc_lens = np.zeros((hps.batch_size.value), dtype=np.int32)
+    self.enc_padding_mask = np.zeros((hps.batch_size.value, max_enc_seq_len), dtype=np.float32)
 
     # Fill in the numpy arrays
     for i, ex in enumerate(example_list):
@@ -179,7 +179,7 @@ class Batch(object):
       # Store the in-article OOVs themselves
       self.art_oovs = [ex.article_oovs for ex in example_list]
       # Store the version of the enc_batch that uses the article OOV ids
-      self.enc_batch_extend_vocab = np.zeros((hps.batch_size, max_enc_seq_len), dtype=np.int32)
+      self.enc_batch_extend_vocab = np.zeros((hps.batch_size.value, max_enc_seq_len), dtype=np.int32)
       for i, ex in enumerate(example_list):
         self.enc_batch_extend_vocab[i, :] = ex.enc_input_extend_vocab[:]
 
@@ -238,7 +238,7 @@ class Batcher(object):
 
     # Initialize a queue of Batches waiting to be used, and a queue of Examples waiting to be batched
     self._batch_queue = Queue.Queue(self.BATCH_QUEUE_MAX)
-    self._example_queue = Queue.Queue(self.BATCH_QUEUE_MAX * self._hps.batch_size)
+    self._example_queue = Queue.Queue(self.BATCH_QUEUE_MAX * self._hps.batch_size.value)
 
     # Different settings depending on whether we're in single_pass mode or not
     if single_pass:
@@ -317,14 +317,14 @@ class Batcher(object):
       if self._hps.mode != 'decode':
         # Get bucketing_cache_size-many batches of Examples into a list, then sort
         inputs = []
-        for _ in xrange(self._hps.batch_size * self._bucketing_cache_size):
+        for _ in xrange(self._hps.batch_size.value * self._bucketing_cache_size):
           inputs.append(self._example_queue.get())
         inputs = sorted(inputs, key=lambda inp: inp.enc_len) # sort by length of encoder sequence
 
         # Group the sorted Examples into batches, optionally shuffle the batches, and place in the batch queue.
         batches = []
-        for i in xrange(0, len(inputs), self._hps.batch_size):
-          batches.append(inputs[i:i + self._hps.batch_size])
+        for i in xrange(0, len(inputs), self._hps.batch_size.value):
+          batches.append(inputs[i:i + self._hps.batch_size.value])
         if not self._single_pass:
           shuffle(batches)
         for b in batches:  # each b is a list of Example objects
@@ -332,7 +332,7 @@ class Batcher(object):
 
       else: # beam search decode mode
         ex = self._example_queue.get()
-        b = [ex for _ in xrange(self._hps.batch_size)]
+        b = [ex for _ in xrange(self._hps.batch_size.value)]
         self._batch_queue.put(Batch(b, self._hps, self._vocab))
 
   def watch_threads(self):

@@ -16,6 +16,23 @@
 
 """This is the top-level file to train, evaluate or test your summarization model"""
 
+
+# import tensorflow as tf
+# # Creates a graph.
+# with tf.device('/device:GPU:0'):
+#   a = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[2, 3], name='a')
+#   b = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[3, 2], name='b')
+#   c = tf.matmul(a, b)
+# # Creates a session with log_device_placement set to True.
+# sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+# # Runs the op.
+# print(sess.run(c))
+#
+#
+# sys.exit()
+#
+
+
 import sys
 import time
 import os
@@ -46,8 +63,8 @@ from tensorflow.python.ops.distributions import bernoulli
 FLAGS = tf.app.flags.FLAGS
 
 # Where to find data
-tf.app.flags.DEFINE_string('data_path', os.path.expanduser('~/data/cnn_dm/finished_files/chunked/train_*'), 'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.')
-tf.app.flags.DEFINE_string('vocab_path', os.path.expanduser('~/data/cnn_dm/finished_files/vocab'), 'Path expression to text vocabulary file.')
+tf.app.flags.DEFINE_string('data_path', '', 'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.ex:os.path.expanduser("~/data/cnn_dm/finished_files/chunked/train_*") ')
+tf.app.flags.DEFINE_string('vocab_path', '', "Path expression to text vocabulary file.ex:os.path.expanduser('~/data/cnn_dm/finished_files/vocab')")
 
 # Important settings
 tf.app.flags.DEFINE_string('mode', 'train', 'must be one of train/eval/decode')
@@ -55,8 +72,8 @@ tf.app.flags.DEFINE_boolean('single_pass', False, 'For decode mode only. If True
 tf.app.flags.DEFINE_integer('decode_after', 0, 'skip already decoded docs')
 
 # Where to save output
-tf.app.flags.DEFINE_string('log_root', os.path.expanduser('~/working_dir/cnn_dm/RLSeq2Seq'), 'Root directory for all logging.')
-tf.app.flags.DEFINE_string('exp_name', 'intradecoder-temporalattention-withpretraining', 'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
+tf.app.flags.DEFINE_string('log_root', '', "Root directory for all logging.ex:os.path.expanduser('~/working_dir/cnn_dm/RLSeq2Seq')")
+tf.app.flags.DEFINE_string('exp_name', '', 'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
 
 # Hyperparameters
 tf.app.flags.DEFINE_integer('enc_hidden_dim', 256, 'dimension of RNN hidden states')

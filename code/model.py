@@ -383,7 +383,7 @@ class SummarizationModel(object):
     gradients = tf.gradients(loss_to_minimize, tvars, aggregation_method=tf.AggregationMethod.EXPERIMENTAL_TREE)
 
     # Clip the gradients
-    with tf.device("/gpu:{}".format(self._hps.gpu_num.value)):
+    with tf.device("/device:GPU:{}".format(self._hps.gpu_num.value)):
       grads, global_norm = tf.clip_by_global_norm(gradients, self._hps.max_grad_norm.value)
 
     # Add a summary
@@ -391,7 +391,7 @@ class SummarizationModel(object):
 
     # Apply adagrad optimizer
     optimizer = tf.train.AdagradOptimizer(self._hps.lr.value, initial_accumulator_value=self._hps.adagrad_init_acc.value)
-    with tf.device("/gpu:{}".format(self._hps.gpu_num.value)):
+    with tf.device("/device:GPU:{}".format(self._hps.gpu_num.value)):
       self._shared_train_op = optimizer.apply_gradients(zip(grads, tvars), global_step=self.global_step, name='train_step')
 
   def build_graph(self):
@@ -400,7 +400,7 @@ class SummarizationModel(object):
     t0 = time.time()
     self.global_step = tf.Variable(0, name='global_step', trainable=False)
     self._add_placeholders()
-    with tf.device("/gpu:{}".format(self._hps.gpu_num.value)):
+    with tf.device("/device:GPU:{}".format(self._hps.gpu_num.value)):
       self._add_seq2seq()
       if self._hps.mode.value in ['train', 'eval']:
         self._add_shared_loss_op()

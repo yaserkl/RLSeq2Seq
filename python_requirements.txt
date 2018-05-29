@@ -1,4 +1,4 @@
-tensorflow-gpu == 1.4
+tensorflow-gpu
 PyYAML
 spacy
 scikit-learn

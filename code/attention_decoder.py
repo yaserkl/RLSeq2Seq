@@ -319,7 +319,7 @@ def attention_decoder(_hps,
       if _hps.intradecoder.value:
         context_decoder_vector, _ = intra_decoder_attention(_dec_in_state, tf.stack(prev_decoder_outputs,axis=0))
     for i, inp in enumerate(emb_dec_inputs):
-      tf.logging.info("Adding attention_decoder timestep %i of %i", i, len(emb_dec_inputs))
+      tf.logging.info("Adding attention_decoder timestep %i of %i", i+1, len(emb_dec_inputs))
       if i > 0:
         variable_scope.get_variable_scope().reuse_variables()
 

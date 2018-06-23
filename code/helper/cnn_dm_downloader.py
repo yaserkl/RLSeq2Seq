@@ -7,8 +7,6 @@
 
 
 from glob import glob
-import newspaper
-from newspaper import Article
 from unidecode import unidecode
 from multiprocessing import Pool, cpu_counts
 import os, sys

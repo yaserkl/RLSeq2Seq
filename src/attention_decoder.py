@@ -309,8 +309,6 @@ def attention_decoder(_hps,
     state = _dec_in_state
     coverage = prev_coverage # initialize coverage to None or whatever was passed in
     context_vector = array_ops.zeros([batch_size, attn_size])
-    sample_embedding = array_ops.zeros([batch_size, emb_size])
-    greedy_embedding = array_ops.zeros([batch_size, emb_size])
     context_decoder_vector = array_ops.zeros([batch_size, decoder_attn_size])
     context_vector.set_shape([None, attn_size])  # Ensure the second shape of attention vectors is set.
     if initial_state_attention: # true in decode mode

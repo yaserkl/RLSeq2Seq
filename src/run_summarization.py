@@ -517,7 +517,7 @@ class Seq2Seq(object):
       sess.run(tf.global_variables_initializer(),feed_dict={self.model.embedding_place:self.word_vector})
     eval_dir = os.path.join(FLAGS.log_root, "eval") # make a subdir of the root dir for eval data
     bestmodel_save_path = os.path.join(eval_dir, 'bestmodel') # this is where checkpoints of best models are saved
-    summary_writer = tf.summary.FileWriter(eval_dir)
+    self.summary_writer = tf.summary.FileWriter(eval_dir)
 
     if FLAGS.ac_training:
       tf.logging.info('DDQN building graph')
@@ -609,6 +609,12 @@ class Seq2Seq(object):
           printer_helper['shared_loss'] = results['shared_loss']
           printer_helper['rl_loss'] = results['rl_loss']
           printer_helper['rl_avg_logprobs'] = results['rl_avg_logprobs']
+        if FLAGS.rl_training:
+          printer_helper['sampled_r'] = np.mean(results['sampled_sentence_r_values'])
+          printer_helper['greedy_r'] = np.mean(results['greedy_sentence_r_values'])
+          printer_helper['r_diff'] = printer_helper['sampled_r'] - printer_helper['greedy_r']
+        if FLAGS.ac_training:
+          printer_helper['dqn_loss'] = np.mean(self.avg_dqn_loss) if len(self.avg_dqn_loss) > 0 else 0
 
         for (k,v) in printer_helper.items():
           if not np.isfinite(v):
@@ -618,10 +624,10 @@ class Seq2Seq(object):
         # add summaries
         summaries = results['summaries']
         train_step = results['global_step']
-        summary_writer.add_summary(summaries, train_step)
+        self.summary_writer.add_summary(summaries, train_step)
 
         # calculate running avg loss
-        avg_losses.append(self.calc_running_avg_loss(np.asscalar(loss), running_avg_loss, summary_writer, train_step))
+        avg_losses.append(self.calc_running_avg_loss(np.asscalar(loss), running_avg_loss, train_step))
         tf.logging.info('-------------------------------------------')
 
       running_avg_loss = np.mean(avg_losses)
@@ -638,7 +644,7 @@ class Seq2Seq(object):
 
       # flush the summary writer every so often
       if train_step % 100 == 0:
-        summary_writer.flush()
+        self.summary_writer.flush()
       #time.sleep(600) # run eval every 10 minute
 
   def main(self, unused_argv):

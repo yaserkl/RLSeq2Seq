@@ -83,8 +83,8 @@ class SummarizationModel(object):
       self._enc_batch_extend_vocab = tf.placeholder(tf.int32, [hps.batch_size, None], name='enc_batch_extend_vocab')
       self._max_art_oovs = tf.placeholder(tf.int32, [], name='max_art_oovs')
     if FLAGS.rl_training:
-      self._sampled_sentence_r_values = tf.placeholder(tf.float32, [None], name='sampled_sentence_r_values')
-      self._greedy_sentence_r_values = tf.placeholder(tf.float32, [None], name='greedy_sentence_r_values')
+      self._sampled_sentence_r_values = tf.placeholder(tf.float32, [hps.k, None], name='sampled_sentence_r_values')
+      self._greedy_sentence_r_values = tf.placeholder(tf.float32, [hps.k, None], name='greedy_sentence_r_values')
     if FLAGS.ac_training: # added by yaserkl@vt.edu for the purpose of calculating rouge loss
       self._q_estimates = tf.placeholder(tf.float32, [self._hps.batch_size,self._hps.k,self._hps.max_dec_steps, None], name='q_estimates')
     if FLAGS.scheduled_sampling:
@@ -326,23 +326,37 @@ class SummarizationModel(object):
       # Adding Self-Critic Reward to CE loss in Policy-Gradient Model
       if self._hps.rl_training:
         #### Calculating the reinforce loss according to Eq. 15 in https://arxiv.org/pdf/1705.04304.pdf
-        loss_per_step = [] # will be list length max_dec_steps containing shape (batch_size)
-        rl_loss_per_step = [] # will be list length max_dec_steps containing shape (batch_size)
+        loss_per_step = [] # will be list length max_dec_steps*k containing shape (batch_size)
+        rl_loss_per_step = [] # will be list length max_dec_steps*k containing shape (batch_size)
         batch_nums = tf.range(0, limit=self._hps.batch_size) # shape (batch_size)
         for dec_step, dist in enumerate(self.final_dists):
-          targets = tf.squeeze(self.samples[dec_step]) # The indices of the sampled words. shape (batch_size)
-          indices = tf.stack( (batch_nums, targets), axis=1) # shape (batch_size, 2)
-          gold_probs = tf.gather_nd(dist, indices) # shape (batch_size). prob of correct words on this step
-          losses = -tf.log(gold_probs)
-          loss_per_step.append(losses)
-          # Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
-          # Equal reward for all tokens
-          rl_losses = -tf.log(gold_probs) * (self._sampled_sentence_r_values-self._greedy_sentence_r_values)
-          rl_loss_per_step.append(rl_losses)
+          _targets = self.samples[dec_step] # The indices of the sampled words. shape (batch_size, k)
+          for _k, targets in enumerate(tf.unstack(_targets,axis=1)): # list of k samples of size (batch_size)
+            indices = tf.stack( (batch_nums, targets), axis=1) # shape (batch_size, 2)
+            gold_probs = tf.gather_nd(dist, indices) # shape (batch_size). prob of correct words on this step
+            losses = -tf.log(gold_probs)
+            loss_per_step.append(losses)
+            # Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
+            # Equal reward for all tokens
+            rl_losses = -tf.log(gold_probs) * (self._sampled_sentence_r_values[_k]-self._greedy_sentence_r_values[_k])
+            rl_loss_per_step.append(rl_losses)
+
+        rl_loss_per_step = tf.unstack(tf.reshape(rl_loss_per_step, [self._hps.k, self._hps.batch_size, -1]))
+        loss_per_step = tf.unstack(tf.reshape(loss_per_step, [self._hps.k, self._hps.batch_size, -1]))
+
         with tf.variable_scope('reinforce_loss'):
-          r_diff = tf.reduce_mean(self._sampled_sentence_r_values - self._greedy_sentence_r_values)
-          self._rl_avg_logprobs = _mask_and_avg(loss_per_step, self._dec_padding_mask)
-          self._rl_loss = _mask_and_avg(rl_loss_per_step, self._dec_padding_mask)
+          r_diff = []
+          self._rl_avg_logprobs = []
+          self._rl_loss = []
+
+          for _k in range(self._hps.k):
+            r_diff.append(tf.reduce_mean(self._sampled_sentence_r_values[_k] - self._greedy_sentence_r_values[_k,:]))
+            self._rl_avg_logprobs.append(_mask_and_avg(tf.unstack(loss_per_step[_k], axis=1), self._dec_padding_mask))
+            self._rl_loss.append(_mask_and_avg(tf.unstack(rl_loss_per_step[_k], axis=1), self._dec_padding_mask))
+
+          r_diff = tf.reduce_mean(r_diff)
+          self._rl_avg_logprobs = tf.reduce_mean(self._rl_avg_logprobs)
+          self._rl_loss = tf.reduce_mean(self._rl_loss)
           # We multiply the ROUGE difference of sampling vs greedy sentence to the loss of all tokens in the sequence
           # Eq. 16 in https://arxiv.org/pdf/1705.04304.pdf and Eq. 34 in https://arxiv.org/pdf/1805.09461.pdf
           self._reinforce_shared_loss = self._eta * self._rl_loss + (tf.constant(1.,dtype=tf.float32) - self._eta) * self._pgen_loss
@@ -649,13 +663,17 @@ class SummarizationModel(object):
       ret_dict = sess.run(to_return, feed_dict)
       # calculate reward
       for sampled_sentence, greedy_search_sentence, target_sentence in zip(ret_dict['sampled_sentences'],ret_dict['greedy_search_sentences'],batch.target_batch):
-         # optimizing based on reward function measure
+        # optimizing based on reward function measure
         reference_sent = ' '.join([str(k) for k in target_sentence])
-        sampled_sent = ' '.join([str(k) for k in sampled_sentence])
-        sampled_sentence_r_values.append(self.reward_function(reference_sent, sampled_sent, self._hps.reward_function))
-        greedy_sent = ' '.join([str(k) for k in greedy_search_sentence])
-        greedy_sentence_r_values.append(self.reward_function(reference_sent, greedy_sent, self._hps.reward_function))
+        for _ in range(self._hps.k):
+          sampled_sent = ' '.join([str(k) for k in sampled_sentence[_]])
+          sampled_sentence_r_values.append(self.reward_function(reference_sent, sampled_sent, self._hps.reward_function))
+          greedy_sent = ' '.join([str(k) for k in greedy_search_sentence[_]])
+          greedy_sentence_r_values.append(self.reward_function(reference_sent, greedy_sent, self._hps.reward_function))
 
+
+    sampled_sentence_r_values = np.reshape(sampled_sentence_r_values, [self._hps.k, -1])
+    greedy_sentence_r_values = np.reshape(greedy_sentence_r_values, [self._hps.k,-1])
     to_return = {
         'train_op': self._shared_train_op,
         'summaries': self._summaries,

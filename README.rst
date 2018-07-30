@@ -119,7 +119,7 @@ https://summari.es/
 
 We have provided helper codes to download the cnn-dailymail dataset and
 pre-process this dataset and newsroom dataset.
-Please refer to `this link <code/helper>`_ to access them.
+Please refer to `this link <src/helper>`_ to access them.
 
 We saw a large improvement on the ROUGE measure by using our processed version of these datasets
 in the summarization results, therefore, we strongly suggest using these pre-processed files for
@@ -176,7 +176,7 @@ Scheduled Sampling using Hard-Argmax and Greedy selection (`Bengio et al <https:
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-hardargmax-greedy --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=2.5E-05 --hard_argmax=True --greedy_scheduled_sampling=True
+    CUDA_VISIBLE_DEVICES=0 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-hardargmax-greedy --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=2.5E-05 --hard_argmax=True --greedy_scheduled_sampling=True
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Scheduled Sampling using Soft-Argmax and Sampling selection (`Goyal et al <https://arxiv.org/abs/1506.03099>`_.):
@@ -184,7 +184,7 @@ Scheduled Sampling using Soft-Argmax and Sampling selection (`Goyal et al <https
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-softargmax-sampling --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=2.5E-05 --hard_argmax=False --greedy_scheduled_sampling=False --alpha=10
+    CUDA_VISIBLE_DEVICES=0 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-softargmax-sampling --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=2.5E-05 --hard_argmax=False --greedy_scheduled_sampling=False --alpha=10
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -193,7 +193,7 @@ End2EndBackProp (`Ranzato et al <https://arxiv.org/abs/1511.06732>`_.):
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-end2endbackprop --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=2.5E-05 --hard_argmax=True --E2EBackProp=True --k=4
+    CUDA_VISIBLE_DEVICES=0 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=scheduled-sampling-end2endbackprop --batch_size=80 --max_iter=40000 --scheduled_sampling=True --sampling_probability=2.5E-05 --hard_argmax=True --E2EBackProp=True --k=4
 
 ---------------------------------------------------------------------------
 
@@ -240,7 +240,7 @@ Pre-Training using only MLE loss with intradecoder attention and temporal attent
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=80 --max_iter=20000 --use_temporal_attention=True --intradecoder=True --rl_training=False
+    CUDA_VISIBLE_DEVICES=0 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=80 --max_iter=20000 --use_temporal_attention=True --intradecoder=True --rl_training=False
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -250,7 +250,7 @@ Here, we use a different GPU for evaluation, but we can use the same GPU if we d
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=1 python code/run_summarization.py --mode=eval --data_path=$HOME/data/cnn_dm/finished_files/chunked/val_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=8 --use_temporal_attention=True --intradecoder=True --rl_training=False
+    CUDA_VISIBLE_DEVICES=1 python src/run_summarization.py --mode=eval --data_path=$HOME/data/cnn_dm/finished_files/chunked/val_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=8 --use_temporal_attention=True --intradecoder=True --rl_training=False
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -262,14 +262,14 @@ First, add required training parameter to the model:
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=80 --max_iter=40000 --intradecoder=True --use_temporal_attention=True --eta=2.5E-05 --rl_training=True --convert_to_reinforce_model=True
+    CUDA_VISIBLE_DEVICES=0 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=80 --max_iter=40000 --intradecoder=True --use_temporal_attention=True --eta=2.5E-05 --rl_training=True --convert_to_reinforce_model=True
 
 
 Then, start running the model with MLE+RL training loss:
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=80 --max_iter=40000 --intradecoder=True --use_temporal_attention=True --eta=2.5E-05 --rl_training=True
+    CUDA_VISIBLE_DEVICES=0 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=80 --max_iter=40000 --intradecoder=True --use_temporal_attention=True --eta=2.5E-05 --rl_training=True
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Evaluating MLE+RL training on validation data
@@ -277,7 +277,7 @@ Evaluating MLE+RL training on validation data
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=1 python code/run_summarization.py --mode=eval --data_path=$HOME/data/cnn_dm/finished_files/chunked/val_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=8 --use_temporal_attention=True --intradecoder=True --rl_training=True
+    CUDA_VISIBLE_DEVICES=1 python src/run_summarization.py --mode=eval --data_path=$HOME/data/cnn_dm/finished_files/chunked/val_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --batch_size=8 --use_temporal_attention=True --intradecoder=True --rl_training=True
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Start decoding the trained model
@@ -286,7 +286,7 @@ We use ROUGE as the evaluation metrics.
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --rl_training=True --intradecoder=True --use_temporal_attention=True --single_pass=1 --beam_size=4 --decode_after=0
+    CUDA_VISIBLE_DEVICES=0 python src/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=intradecoder-temporalattention-withpretraining --rl_training=True --intradecoder=True --use_temporal_attention=True --single_pass=1 --beam_size=4 --decode_after=0
 
 ---------------------------------------------------------------------------
 
@@ -341,7 +341,7 @@ Pre-Training the Actor using only MLE loss
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=20000
+    CUDA_VISIBLE_DEVICES=0 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=20000
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Adding Critic model to the current model
@@ -350,7 +350,7 @@ We can use Dueling network to train the DDQN by activating ``dueling_net`` flag.
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0,1 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=21000 --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --convert_to_reinforce_model=True --dqn_gpu_num=1
+    CUDA_VISIBLE_DEVICES=0,1 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=21000 --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --convert_to_reinforce_model=True --dqn_gpu_num=1
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -360,7 +360,7 @@ Use ``dqn_pretrain_steps`` flag to set how many iteration you want to pre-train 
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0,1 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --ac_training=True --dqn_pretrain=True --dueling_net=True --dqn_polyak_averaging=True --dqn_gpu_num=1
+    CUDA_VISIBLE_DEVICES=0,1 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --ac_training=True --dqn_pretrain=True --dueling_net=True --dqn_polyak_averaging=True --dqn_gpu_num=1
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -370,7 +370,7 @@ We can run Actor in one GPU and Critic in another GPU simply by using a differen
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0,1 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=22000 --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --calculate_true_q=True --dqn_gpu_num=1
+    CUDA_VISIBLE_DEVICES=0,1 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=22000 --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --calculate_true_q=True --dqn_gpu_num=1
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Start Training Actor/Critic using Q-Estimates
@@ -379,7 +379,7 @@ Please note that we don't use ``calculate_true_q`` flag, anymore.
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0,1 python code/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=40000 --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --dqn_gpu_num=1
+    CUDA_VISIBLE_DEVICES=0,1 python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --batch_size=80 --max_iter=40000 --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --dqn_gpu_num=1
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Decoding based on Actor and Critic estimation
@@ -387,7 +387,7 @@ Decoding based on Actor and Critic estimation
 
 .. code:: bash
 
-    CUDA_VISIBLE_DEVICES=0 python code/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --dqn_gpu_num=1 --single_pass=1 --beam_size=4
+    CUDA_VISIBLE_DEVICES=0 python src/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=actor-critic-ddqn --ac_training=True --dueling_net=True --dqn_polyak_averaging=True --dqn_gpu_num=1 --single_pass=1 --beam_size=4
 
 
 ---------------------------------------------------------------------------

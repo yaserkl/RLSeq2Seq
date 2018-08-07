@@ -25,6 +25,7 @@ from tensorflow.contrib.tensorboard.plugins import projector
 from nltk.translate.bleu_score import sentence_bleu
 #### yaserkl@vt.edu adding rouge library
 from rouge import rouge
+from rouge_tensor import rouge_l_fscore
 import data
 from scipy.sparse import lil_matrix
 from dqn import DQN
@@ -82,9 +83,11 @@ class SummarizationModel(object):
     if FLAGS.pointer_gen:
       self._enc_batch_extend_vocab = tf.placeholder(tf.int32, [hps.batch_size, None], name='enc_batch_extend_vocab')
       self._max_art_oovs = tf.placeholder(tf.int32, [], name='max_art_oovs')
-    if FLAGS.rl_training:
+    '''
+    if FLAGS.rl_training:      
       self._sampled_sentence_r_values = tf.placeholder(tf.float32, [hps.k, None], name='sampled_sentence_r_values')
       self._greedy_sentence_r_values = tf.placeholder(tf.float32, [hps.k, None], name='greedy_sentence_r_values')
+    '''
     if FLAGS.ac_training: # added by yaserkl@vt.edu for the purpose of calculating rouge loss
       self._q_estimates = tf.placeholder(tf.float32, [self._hps.batch_size,self._hps.k,self._hps.max_dec_steps, None], name='q_estimates')
     if FLAGS.scheduled_sampling:
@@ -191,25 +194,25 @@ class SummarizationModel(object):
     prev_coverage = self.prev_coverage if (hps.mode=="decode" and hps.coverage) else None # In decode mode, we run attention_decoder one step at a time and so need to pass in the previous step's coverage vector each time
     prev_decoder_outputs = self.prev_decoder_outputs if (hps.intradecoder and hps.mode=="decode") else tf.stack([],axis=0)
     prev_encoder_es = self.prev_encoder_es if (hps.use_temporal_attention and hps.mode=="decode") else tf.stack([],axis=0)
-    return attention_decoder(hps, 
-      self._vocab.size(), 
-      self._max_art_oovs, 
-      self._enc_batch_extend_vocab, 
-      emb_dec_inputs, 
-      self._dec_in_state, 
-      self._enc_states, 
-      self._enc_padding_mask, 
-      self._dec_padding_mask, 
-      cell, 
-      embedding, 
-      self._sampling_probability if FLAGS.scheduled_sampling else 0, 
+    return attention_decoder(hps,
+      self._vocab.size(),
+      self._max_art_oovs,
+      self._enc_batch_extend_vocab,
+      emb_dec_inputs,
+      self._dec_in_state,
+      self._enc_states,
+      self._enc_padding_mask,
+      self._dec_padding_mask,
+      cell,
+      embedding,
+      self._sampling_probability if FLAGS.scheduled_sampling else 0,
       self._alpha if FLAGS.E2EBackProp else 0,
-      self._vocab.word2id(data.UNKNOWN_TOKEN), 
-      initial_state_attention=(hps.mode=="decode"), 
-      pointer_gen=hps.pointer_gen, 
-      use_coverage=hps.coverage, 
-      prev_coverage=prev_coverage, 
-      prev_decoder_outputs=prev_decoder_outputs, 
+      self._vocab.word2id(data.UNKNOWN_TOKEN),
+      initial_state_attention=(hps.mode=="decode"),
+      pointer_gen=hps.pointer_gen,
+      use_coverage=hps.coverage,
+      prev_coverage=prev_coverage,
+      prev_decoder_outputs=prev_decoder_outputs,
       prev_encoder_es = prev_encoder_es)
 
   def _add_emb_vis(self, embedding_var):
@@ -260,8 +263,8 @@ class SummarizationModel(object):
       if hps.mode in ['train', 'eval']:
         if hps.ac_training or hps.rl_training:
           # Get the sampled and greedy sentence from model output
-          self.sampled_sentences = tf.unstack(tf.stack(self.samples,axis=2)) # list of length batch_size of (k, <=max_dec_steps) word indices
-          self.greedy_search_sentences = tf.unstack(tf.stack(self.greedy_search_samples,axis=2)) # list of length batch_size of (k, <=max_dec_steps) word indices
+          self.sampled_sentences = tf.transpose(tf.stack(self.samples), perm=[1,2,0]) # (batch_size, k, <=max_dec_steps) word indices
+          self.greedy_search_sentences = tf.transpose(tf.stack(self.greedy_search_samples), perm=[1,2,0]) # (batch_size, k, <=max_dec_steps) word indices
         else:
           self.sampled_sentences = []
           self.greedy_search_sentences = []
@@ -329,6 +332,13 @@ class SummarizationModel(object):
         loss_per_step = [] # will be list length max_dec_steps*k containing shape (batch_size)
         rl_loss_per_step = [] # will be list length max_dec_steps*k containing shape (batch_size)
         batch_nums = tf.range(0, limit=self._hps.batch_size) # shape (batch_size)
+        self._sampled_rouges = []
+        self._greedy_rouges = []
+        self._reward_diff = []
+        for _ in range(self._hps.k):
+          self._sampled_rouges.append(rouge_l_fscore(self.sampled_sentences[:, _, :], self._target_batch))
+          self._greedy_rouges.append(rouge_l_fscore(self.greedy_search_sentences[:, _, :], self._target_batch))
+          self._reward_diff.append(self._sampled_rouges[_] - self._greedy_rouges[_])
         for dec_step, dist in enumerate(self.final_dists):
           _targets = self.samples[dec_step] # The indices of the sampled words. shape (batch_size, k)
           for _k, targets in enumerate(tf.unstack(_targets,axis=1)): # list of k samples of size (batch_size)
@@ -338,23 +348,23 @@ class SummarizationModel(object):
             loss_per_step.append(losses)
             # Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
             # Equal reward for all tokens
-            rl_losses = -tf.log(gold_probs) * (self._sampled_sentence_r_values[_k]-self._greedy_sentence_r_values[_k])
+            rl_losses = -tf.log(gold_probs) * self._reward_diff[_k]
+            #rl_losses = -tf.log(gold_probs) * (self._sampled_sentence_r_values[_k]-self._greedy_sentence_r_values[_k])
             rl_loss_per_step.append(rl_losses)
 
-        rl_loss_per_step = tf.unstack(tf.reshape(rl_loss_per_step, [self._hps.k, self._hps.batch_size, -1]))
-        loss_per_step = tf.unstack(tf.reshape(loss_per_step, [self._hps.k, self._hps.batch_size, -1]))
-
+        # new size: (k, max_dec_steps, batch_size)
+        rl_loss_per_step = tf.unstack(
+          tf.transpose(tf.reshape(rl_loss_per_step, [-1, self._hps.k, self._hps.batch_size]),perm=[1,0,2]))
+        loss_per_step = tf.unstack(
+          tf.transpose(tf.reshape(loss_per_step, [-1, self._hps.k, self._hps.batch_size]), perm=[1, 0, 2]))
         with tf.variable_scope('reinforce_loss'):
-          r_diff = []
           self._rl_avg_logprobs = []
           self._rl_loss = []
 
           for _k in range(self._hps.k):
-            r_diff.append(tf.reduce_mean(self._sampled_sentence_r_values[_k] - self._greedy_sentence_r_values[_k,:]))
-            self._rl_avg_logprobs.append(_mask_and_avg(tf.unstack(loss_per_step[_k], axis=1), self._dec_padding_mask))
-            self._rl_loss.append(_mask_and_avg(tf.unstack(rl_loss_per_step[_k], axis=1), self._dec_padding_mask))
+            self._rl_avg_logprobs.append(_mask_and_avg(tf.unstack(loss_per_step[_k]), self._dec_padding_mask))
+            self._rl_loss.append(_mask_and_avg(tf.unstack(tf.reshape(rl_loss_per_step[_k], [self._hps.max_dec_steps, self._hps.batch_size])), self._dec_padding_mask))
 
-          r_diff = tf.reduce_mean(r_diff)
           self._rl_avg_logprobs = tf.reduce_mean(self._rl_avg_logprobs)
           self._rl_loss = tf.reduce_mean(self._rl_loss)
           # We multiply the ROUGE difference of sampling vs greedy sentence to the loss of all tokens in the sequence
@@ -363,9 +373,9 @@ class SummarizationModel(object):
           #### the following is only for monitoring purposes
           self.variable_summaries('reinforce_avg_logprobs', self._rl_avg_logprobs)
           self.variable_summaries('reinforce_loss', self._rl_loss)
-          self.variable_summaries('reinforce_sampled_r_value', tf.reduce_mean(self._sampled_sentence_r_values))
-          self.variable_summaries('reinforce_greedy_r_value', tf.reduce_mean(self._greedy_sentence_r_values))
-          self.variable_summaries('reinforce_r_diff', r_diff)
+          self.variable_summaries('reinforce_sampled_r_value', tf.reduce_mean(self._sampled_rouges))
+          self.variable_summaries('reinforce_greedy_r_value', tf.reduce_mean(self._greedy_rouges))
+          self.variable_summaries('reinforce_r_diff', tf.reduce_mean(self._reward_diff))
           self.variable_summaries('reinforce_shared_loss', self._reinforce_shared_loss)
 
       # Calculate coverage loss from the attention distributions
@@ -448,7 +458,7 @@ class SummarizationModel(object):
       else:
         feed_dict[self._sampling_probability] = min(step * self._hps.sampling_probability,1.) # linear decay function
       ranges = [np.exp(float(step) * self._hps.alpha),np.finfo(np.float64).max] # to avoid overflow
-      feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function        
+      feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function
 
     vsize_extended = self._vocab.size() + max_art_oovs
     if self._hps.calculate_true_q:
@@ -644,11 +654,11 @@ class SummarizationModel(object):
         feed_dict[self._sampling_probability] = min(step * self._hps.sampling_probability,1.) # linear decay function
       ranges = [np.exp(float(step) * self._hps.alpha),np.finfo(np.float64).max] # to avoid overflow
       feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function
-
     if self._hps.ac_training:
       self.q_estimates = q_estimates
       feed_dict[self._q_estimates]= self.q_estimates
-
+    '''
+    
     if self._hps.rl_training:
       sampled_sentence_r_values = []
       greedy_sentence_r_values = []
@@ -674,6 +684,7 @@ class SummarizationModel(object):
 
     sampled_sentence_r_values = np.reshape(sampled_sentence_r_values, [self._hps.k, -1])
     greedy_sentence_r_values = np.reshape(greedy_sentence_r_values, [self._hps.k,-1])
+    '''
     to_return = {
         'train_op': self._shared_train_op,
         'summaries': self._summaries,
@@ -683,11 +694,15 @@ class SummarizationModel(object):
     }
 
     if self._hps.rl_training:
+      '''
       to_return['sampled_sentence_r_values']= self._sampled_sentence_r_values
       to_return['greedy_sentence_r_values']= self._greedy_sentence_r_values
 
       feed_dict[self._sampled_sentence_r_values]=sampled_sentence_r_values
       feed_dict[self._greedy_sentence_r_values]=greedy_sentence_r_values
+      '''
+      to_return['sampled_sentence_r_values'] = self._sampled_rouges
+      to_return['greedy_sentence_r_values'] = self._greedy_rouges
 
     if self._hps.coverage:
       to_return['coverage_loss'] = self._coverage_loss
@@ -725,7 +740,7 @@ class SummarizationModel(object):
       else:
         feed_dict[self._sampling_probability] = min(step * self._hps.sampling_probability,1.) # linear decay function
       ranges = [np.exp(float(step) * self._hps.alpha),np.finfo(np.float64).max] # to avoid overflow
-      feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function        
+      feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function
 
     if self._hps.ac_training:
       self.q_estimates = q_estimates
@@ -754,7 +769,7 @@ class SummarizationModel(object):
         'pgen_loss': self._pgen_loss,
         'global_step': self.global_step,
     }
-    
+
     if self._hps.rl_training:
       to_return['sampled_sentence_r_values']= self._sampled_sentence_r_values
       to_return['greedy_sentence_r_values']= self._greedy_sentence_r_values

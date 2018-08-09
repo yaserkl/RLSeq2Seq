@@ -458,7 +458,7 @@ def scheduled_sampling(hps, sampling_probability, output, embedding, inp, alpha 
 
         greedy_embedding = tf.nn.embedding_lookup(embedding, greedy_search_sample)
         normalized_embedding = tf.multiply(tf.reshape(greedy_search_prob_normalized,[hps.batch_size,hps.k,1]), greedy_embedding)
-        e2e_embedding = tf.reduce_mean(normalized_embedding,axis=1)
+        e2e_embedding = tf.reduce_sum(normalized_embedding,axis=1)
       else:
         e = []
         greedy_search_prob, greedy_search_sample = soft_top_k(alpha, output, K=hps.k) # (batch_size, k), (k, vocab_size)

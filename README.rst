@@ -401,6 +401,10 @@ Please note that we can use options such as ``intradecoder``, ``temporal_attenti
 Under Development
 ==================
 
+----------------------------------------------------------------------------------------
+Boosting the training time in Actor-Critic models by using tensor based reward function
+----------------------------------------------------------------------------------------
+
 -------------------------
 Supporting YAML configs
 -------------------------

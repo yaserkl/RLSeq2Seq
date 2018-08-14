@@ -102,9 +102,9 @@ class ReplayBatch(object):
         self._x[i,:]=e.state_prime
       else:
         self._x[i,:]=e.state
-        self._y[i,:]=normalize(e.q_value[0:hps.vocab_size], axis=1, norm='l1')
+        self._y[i,:]=normalize([e.q_value[0:hps.vocab_size]], axis=1, norm='l1')
       if max_art_oovs == 0:
-        self._y_extended[i,:] = normalize(e.q_value[0:hps.vocab_size], axis=1, norm='l1')
+        self._y_extended[i,:] = normalize([e.q_value[0:hps.vocab_size]], axis=1, norm='l1')
       else:
         self._y_extended[i,:] = e.q_value
 
@@ -125,12 +125,12 @@ class ReplayBuffer(object):
 
     # Start the threads that load the queues
     self._example_q_threads = []
-    for _ in xrange(self._num_example_q_threads):
+    for _ in range(self._num_example_q_threads):
       self._example_q_threads.append(Thread(target=self.fill_example_queue))
       self._example_q_threads[-1].daemon = True
       self._example_q_threads[-1].start()
     self._batch_q_threads = []
-    for _ in xrange(self._num_batch_q_threads):
+    for _ in range(self._num_batch_q_threads):
       self._batch_q_threads.append(Thread(target=self.fill_batch_queue))
       self._batch_q_threads[-1].daemon = True
       self._batch_q_threads[-1].start()
@@ -188,7 +188,7 @@ class ReplayBuffer(object):
     while True:
       # Get bucketing_cache_size-many batches of Examples into a list, then sort
       inputs = []
-      for _ in xrange(self._hps.dqn_batch_size * self._bucketing_cache_size):
+      for _ in range(self._hps.dqn_batch_size * self._bucketing_cache_size):
         inputs.append(self._example_queue.get())
 
       # feed back all the samples to the buffer
@@ -196,7 +196,7 @@ class ReplayBuffer(object):
 
       # Group the sorted Examples into batches, optionally shuffle the batches, and place in the batch queue.
       batches = []
-      for i in xrange(0, len(inputs), self._hps.dqn_batch_size):
+      for i in range(0, len(inputs), self._hps.dqn_batch_size):
         batches.append(inputs[i:i + self._hps.dqn_batch_size])
         shuffle(batches)
       for b in batches:  # each b is a list of Example objects

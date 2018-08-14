@@ -516,7 +516,7 @@ class SummarizationModel(object):
     R = np.zeros((self._hps.max_dec_steps, vsize_extended)) # shape (max_dec_steps, vocab_size)
     Q = np.zeros((self._hps.max_dec_steps, vsize_extended)) # shape (max_dec_steps, vocab_size)
     for t in range(self._hps.max_dec_steps,0,-1):
-      R[t-1][:] = self.reward(t, _ss[0:t],_gts, vsize_extended)
+      R[t-1][:] = self.reward(t, _ss,_gts, vsize_extended)
       # We find true Q-values.
       # Eq. 30 in https://arxiv.org/pdf/1805.09461.pdf
       try:
@@ -568,37 +568,38 @@ class SummarizationModel(object):
     #features = np.concatenate([self.times, _decoder_states], axis=-1) # shape (batch_size, k, <=max_dec_steps, hidden_dim + <=max_dec_steps)
     features = _decoder_states # shape (batch_size, k, <=max_dec_steps, hidden_dim)
 
-    ### TODO: do it in parallel???
+    q_func = lambda i,k,t: self.q_values[i,k,t] # (vsize_extended)
+    zero_func = lambda i, k, t: np.zeros((vsize_extended))
+    raction_func = lambda i,k,t,action: self.r_values[i,k,t,action]
+    r_func = lambda i,k,t,action: self.r_values[i,k,t]
+
+    if self._hps.calculate_true_q:
+      # We use the true q_values that we calculated to train DQN network.
+      pass_q_func = q_func
+      pass_r_func = raction_func
+    else:
+      # We update the q_values later, after collecting the q_estimates from DQN network.
+      pass_q_func = zero_func
+      pass_r_func = r_func
+
     transitions = [] # (h_t, w_t, h_{t+1}, r_t, q_t, done)
     for i in range(self._hps.batch_size):
       for k in range(self._hps.k):
         for t in range(self._hps.max_dec_steps):
           action = greedy_samples[i,k,t]
           done = (t==(self._hps.max_dec_steps-1) or action==3) # 3 is the id for [STOP] in our vocabularity to stop decoding
+          state = features[i, k, t]
           if done:
-            state = features[i,k,t]
             state_prime = np.zeros((features.shape[-1]))
             action_prime = 3 # 3 is the id for [STOP] in our vocabularity to stop decoding
-            if self._hps.calculate_true_q:
-              # We use the true q_values that we calculated to train DQN network.
-              transitions.append(Transition(state, action, state_prime, action_prime, self.r_values[i,k,t,action], self.q_values[i,k,t], True))
-            else:
-              # We update the q_values later, after collecting the q_estimates from DQN network.
-              transitions.append(Transition(state, action, state_prime, action_prime, self.r_values[i,k,t], np.zeros((vsize_extended)), True))
           else:
-            state = features[i,k,t]
             state_prime = features[i,k,t+1]
             action_prime = greedy_samples[i,k,t+1]
-            if self._hps.calculate_true_q:
-              # We use the true q_values that we calculated to train DQN network.
-              transitions.append(Transition(state, action, state_prime, action_prime,self.r_values[i,k,t,action], self.q_values[i,k,t], False))
-            else:
-              # We update the q_values later, after collecting the q_estimates from DQN network.
-              transitions.append(Transition(state, action, state_prime, action_prime,self.r_values[i,k,t], np.zeros((vsize_extended)), False))
+          transitions.append(Transition(state, action, state_prime, action_prime, pass_r_func(i,k,t,action), pass_q_func(i,k,t), done))
 
     return transitions
 
-  def calc_reward(self, t, _ss, _gts): # optimizing based on ROUGE-L
+  def calc_reward(self, _ss, _gts): # optimizing based on ROUGE-L
     """This function will calculate partial reward, meaning we calculate the reward using
     reward_function(_ss[0:t], _gts). Therefore if we have the following two inputs:
     _ss = [A, B, C, D, E]
@@ -615,7 +616,7 @@ class SummarizationModel(object):
       reward: The calculated reward 
     """
 
-    summary = ' '.join([str(k) for k in _ss[0:t]])
+    summary = ' '.join([str(k) for k in _ss])
     reference = ' '.join([str(k) for k in _gts])
     reward = self.reward_function(reference, summary, self._hps.reward_function)
     return reward
@@ -623,11 +624,11 @@ class SummarizationModel(object):
   def reward(self, t, _ss, _gts, vsize_extended): # shape (vocab_size)
     """ A wrapper for calculating the reward. """
     first_case = np.append(_ss[0:t],[0]) # our special character is '[UNK]' which has the id of 0 in our vocabulary
-    special_reward = self.calc_reward(t, first_case, _gts)
+    special_reward = self.calc_reward(first_case, _gts)
     reward = [special_reward for _ in range(vsize_extended)]
     # change the ground-truth reward
     second_case = np.append(_ss[0:t],[_gts[t-1]])
-    reward[_gts[t-1]] = self.calc_reward(t, second_case, _gts)
+    reward[_gts[t-1]] = self.calc_reward(second_case, _gts)
 
     return reward
 
@@ -657,34 +658,6 @@ class SummarizationModel(object):
     if self._hps.ac_training:
       self.q_estimates = q_estimates
       feed_dict[self._q_estimates]= self.q_estimates
-    '''
-    
-    if self._hps.rl_training:
-      sampled_sentence_r_values = []
-      greedy_sentence_r_values = []
-      #### takes the sampled and greed_search sentence to calculate the reward measure
-      to_return = {
-        'sampled_sentences': self.sampled_sentences,
-        'greedy_search_sentences': self.greedy_search_sentences
-      }
-      # We need to run the whole model once to collect the sampled sentence and greedy sentence
-      # and then calculate the reward, we then feed these values to the model again to update the
-      # loss gradient.
-      ret_dict = sess.run(to_return, feed_dict)
-      # calculate reward
-      for sampled_sentence, greedy_search_sentence, target_sentence in zip(ret_dict['sampled_sentences'],ret_dict['greedy_search_sentences'],batch.target_batch):
-        # optimizing based on reward function measure
-        reference_sent = ' '.join([str(k) for k in target_sentence])
-        for _ in range(self._hps.k):
-          sampled_sent = ' '.join([str(k) for k in sampled_sentence[_]])
-          sampled_sentence_r_values.append(self.reward_function(reference_sent, sampled_sent, self._hps.reward_function))
-          greedy_sent = ' '.join([str(k) for k in greedy_search_sentence[_]])
-          greedy_sentence_r_values.append(self.reward_function(reference_sent, greedy_sent, self._hps.reward_function))
-
-
-    sampled_sentence_r_values = np.reshape(sampled_sentence_r_values, [self._hps.k, -1])
-    greedy_sentence_r_values = np.reshape(greedy_sentence_r_values, [self._hps.k,-1])
-    '''
     to_return = {
         'train_op': self._shared_train_op,
         'summaries': self._summaries,
@@ -694,13 +667,6 @@ class SummarizationModel(object):
     }
 
     if self._hps.rl_training:
-      '''
-      to_return['sampled_sentence_r_values']= self._sampled_sentence_r_values
-      to_return['greedy_sentence_r_values']= self._greedy_sentence_r_values
-
-      feed_dict[self._sampled_sentence_r_values]=sampled_sentence_r_values
-      feed_dict[self._greedy_sentence_r_values]=greedy_sentence_r_values
-      '''
       to_return['sampled_sentence_r_values'] = self._sampled_rouges
       to_return['greedy_sentence_r_values'] = self._greedy_rouges
 

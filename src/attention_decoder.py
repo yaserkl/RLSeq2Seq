@@ -20,11 +20,12 @@ import tensorflow as tf
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import nn_ops
-from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import gen_array_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops.distributions import categorical
 from tensorflow.python.ops.distributions import bernoulli
+
+FLAGS = tf.app.flags.FLAGS
 
 def print_shape(str, var):
   tf.logging.info('shape of {}: {}'.format(str, [k.value for k in var.get_shape()]))
@@ -321,6 +322,13 @@ def attention_decoder(_hps,
       if i > 0:
         variable_scope.get_variable_scope().reuse_variables()
 
+      if _hps.mode in ['train','eval'] and _hps.scheduled_sampling and i > 0: # start scheduled sampling after we received the first decoder's output
+        # modify the input to next decoder using scheduled sampling
+        if FLAGS.scheduled_sampling_final_dist:
+          inp = scheduled_sampling(_hps, sampling_probability, final_dist, embedding, inp, alpha)
+        else:
+          inp = scheduled_sampling_vocab_dist(_hps, sampling_probability, vocab_dist, embedding, inp, alpha)
+
       # Merge input and previous attentions into one vector x of the same size as inp
       emb_dim = inp.get_shape().with_rank(2)[1]
       if emb_dim.value is None:
@@ -368,6 +376,11 @@ def attention_decoder(_hps,
         if i > 0:
           tf.get_variable_scope().reuse_variables()
         score = tf.nn.xw_plus_b(output, w_out, v_out)
+        if not _hps.greedy_scheduled_sampling:
+          # Gumbel reparametrization trick: https://arxiv.org/abs/1704.06970
+          U = tf.random_uniform(score.get_shape(),10e-12,(1-10e-12)) # add a small number to avoid log(0)
+          G = -tf.log(-tf.log(U))
+          score = score + G
         vocab_scores.append(score) # apply the linear layer
         vocab_dist = tf.nn.softmax(score)
         vocab_dists.append(vocab_dist) # The vocabulary distributions. List length max_dec_steps of (batch_size, vsize) arrays. The words are in the order they appear in the vocabulary file.
@@ -377,19 +390,15 @@ def attention_decoder(_hps,
         final_dist = _calc_final_dist(_hps, v_size, _max_art_oovs, _enc_batch_extend_vocab, p_gen, vocab_dist, attn_dist)
       else: # final distribution is just vocabulary distribution
         final_dist = vocab_dist
-
       final_dists.append(final_dist)
-      if _hps.rl_training or _hps.ac_training or _hps.scheduled_sampling:
-        # get the sampled token and greedy token
-        one_hot_k_samples = tf.distributions.Multinomial(total_count=1., probs=final_dist).sample(_hps.k) # sample once according to https://arxiv.org/pdf/1705.04304.pdf, size (k,batch_size,extended_vsize)
-        k_argmax = tf.argmax(one_hot_k_samples,axis=2,output_type=tf.int32) # (k, batch_size)
-        k_sample = tf.transpose(k_argmax) # this will take the final_dist and sample from it for a total count of k (k samples), the result is of shape (batch_size,k)
-        greedy_search_prob, greedy_search_sample = tf.nn.top_k(final_dist, k=_hps.k) # (batch_size, k)
-        greedy_search_samples.append(greedy_search_sample)
-        samples.append(k_sample)
-      if _hps.mode in ['train','eval'] and _hps.scheduled_sampling:
-        # modify the input to next decoder using scheduled sampling
-        inp = scheduled_sampling(_hps, sampling_probability, final_dist, embedding, inp, alpha)
+
+      # get the sampled token and greedy token
+      one_hot_k_samples = tf.distributions.Multinomial(total_count=1., probs=final_dist).sample(_hps.k) # sample k times according to https://arxiv.org/pdf/1705.04304.pdf, size (k,batch_size,extended_vsize)
+      k_argmax = tf.argmax(one_hot_k_samples,axis=2, output_type=tf.int32) # (k, batch_size)
+      k_sample = tf.transpose(k_argmax) # this will take the final_dist and sample from it for a total count of k (k samples), the result is of shape (batch_size,k)
+      greedy_search_prob, greedy_search_sample = tf.nn.top_k(final_dist, k=_hps.k) # (batch_size, k)
+      greedy_search_samples.append(greedy_search_sample)
+      samples.append(k_sample)
 
     # If using coverage, reshape it
     if coverage is not None:
@@ -401,28 +410,28 @@ def scheduled_sampling(hps, sampling_probability, output, embedding, inp, alpha 
   # borrowed ideas from https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/ScheduledEmbeddingTrainingHelper
   vocab_size = embedding.get_shape()[0].value
 
-  def soft_argmax(alpha, output):
-    alpha_exp = tf.exp(alpha * output) # (batch_size, vocab_size)
-    one_hot_scores = alpha_exp / tf.reshape(tf.reduce_sum(alpha_exp, axis=1),[-1,1]) #(batch_size, vocab_size)
+  def soft_argmax(alpha, _output):
+    new_oov_scores = tf.reshape(_output[:, 0] + tf.reduce_sum(_output[:, vocab_size:], axis=1),
+                                [-1, 1])  # add score for all OOV to the UNK score
+    _output = tf.concat([new_oov_scores, _output[:, 1:vocab_size]], axis=1) # select only the vocab_size outputs
+    _output = _output / tf.reshape(tf.reduce_sum(output, axis=1), [-1, 1]) # re-normalize scores
+
+    #alpha_exp = tf.exp(alpha * _output) # (batch_size, vocab_size)
+    #one_hot_scores = alpha_exp / tf.reshape(tf.reduce_sum(alpha_exp, axis=1),[-1,1]) #(batch_size, vocab_size)
+    one_hot_scores = tf.nn.softmax((alpha * _output))
     return one_hot_scores
 
-  def soft_top_k(alpha, output, K):
-    copy = tf.identity(output)
+  def soft_top_k(alpha, _output, K):
+    copy = tf.identity(_output)
     p = []
     arg_top_k = []
     for k in range(K):
       sargmax = soft_argmax(alpha, copy)
       copy = (1-sargmax)* copy
-      p.append(tf.reduce_sum(sargmax * output, axis=1))
-      # replace oov with unk if necessary
-      mask = tf.equal(tf.reduce_max(sargmax,axis=1),tf.reduce_max(sargmax[:,0:vocab_size],axis=1))
-      sargmax_truncated = tf.where(mask,
-        sargmax[:,0:vocab_size],
-        tf.stack([tf.one_hot(0, vocab_size) for _ in range(hps.batch_size)]))
+      p.append(tf.reduce_sum(sargmax * _output, axis=1))
+      arg_top_k.append(sargmax)
 
-      arg_top_k.append(sargmax_truncated)
-
-    return p, tf.stack(arg_top_k)
+    return tf.stack(p, axis=1), tf.stack(arg_top_k)
 
   with variable_scope.variable_scope("ScheduledEmbedding"):
     # Return -1s where we did not sample, and sample_ids elsewhere
@@ -440,7 +449,7 @@ def scheduled_sampling(hps, sampling_probability, output, embedding, inp, alpha 
         array_ops.where(sample_ids <= -1), tf.int32)
 
     if hps.greedy_scheduled_sampling:
-      sample_ids = tf.argmax(output,axis=1, output_type=tf.int32)
+      sample_ids = tf.argmax(output, axis=1, output_type=tf.int32)
 
     sample_ids_sampling = array_ops.gather_nd(sample_ids, where_sampling)
 
@@ -458,11 +467,13 @@ def scheduled_sampling(hps, sampling_probability, output, embedding, inp, alpha 
 
         greedy_embedding = tf.nn.embedding_lookup(embedding, greedy_search_sample)
         normalized_embedding = tf.multiply(tf.reshape(greedy_search_prob_normalized,[hps.batch_size,hps.k,1]), greedy_embedding)
-        e2e_embedding = tf.reduce_sum(normalized_embedding,axis=1)
+        e2e_embedding = tf.reduce_mean(normalized_embedding,axis=1)
       else:
         e = []
-        greedy_search_prob, greedy_search_sample = soft_top_k(alpha, output, K=hps.k) # (batch_size, k), (k, vocab_size)
-        greedy_search_prob_normalized = greedy_search_prob/tf.reshape(tf.reduce_sum(greedy_search_prob,axis=1),[-1,1])
+        greedy_search_prob, greedy_search_sample = soft_top_k(alpha, output,
+                                                              K=hps.k)  # (batch_size, k), (k, batch_size, vocab_size)
+        greedy_search_prob_normalized = greedy_search_prob / tf.reshape(tf.reduce_sum(greedy_search_prob, axis=1),
+                                                                        [-1, 1])
 
         for _ in range(hps.k):
           a_k = greedy_search_sample[_]
@@ -474,16 +485,88 @@ def scheduled_sampling(hps, sampling_probability, output, embedding, inp, alpha 
       if hps.hard_argmax:
         sampled_next_inputs = tf.nn.embedding_lookup(embedding, sample_ids_sampling)
       else: # using soft armax (greedy) proposed in: https://arxiv.org/abs/1704.06970
-        if not hps.greedy_scheduled_sampling:
-          # Gumbel reparametrization trick: https://arxiv.org/abs/1704.06970
-          U = tf.random_uniform((hps.batch_size,vocab_size),10e-12,(1-10e-12)) # add a small number to avoid log(0)
-          G = -tf.log(-tf.log(U))
-        else:
-          G = tf.zeros((hps.batch_size,vocab_size))
         #alpha_exp = tf.exp(alpha * (output_not_extended + G)) # (batch_size, vocab_size)
         #one_hot_scores = alpha_exp / tf.reduce_sum(alpha_exp, axis=1) #(batch_size, vocab_size)
-        one_hot_scores = soft_argmax(alpha, (output + G)) #(batch_size, vocab_size)
-        sampled_next_inputs = tf.matmul(one_hot_scores, embedding) #(batch_size, emb_size)
+        one_hot_scores = soft_argmax(alpha, output) #(batch_size, vocab_size)
+        soft_argmax_embedding = tf.matmul(one_hot_scores, embedding) #(batch_size, emb_size)
+        sampled_next_inputs = array_ops.gather_nd(soft_argmax_embedding, where_sampling)
+
+    base_shape = array_ops.shape(inp)
+    result1 = array_ops.scatter_nd(indices=where_sampling, updates=sampled_next_inputs, shape=base_shape)
+    result2 = array_ops.scatter_nd(indices=where_not_sampling, updates=inputs_not_sampling, shape=base_shape)
+    return result1 + result2
+
+def scheduled_sampling_vocab_dist(hps, sampling_probability, output, embedding, inp, alpha = 0):
+  # borrowed ideas from https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/ScheduledEmbeddingTrainingHelper
+
+  def soft_argmax(alpha, output):
+    #alpha_exp = tf.exp(alpha * output) # (batch_size, vocab_size)
+    #one_hot_scores = alpha_exp / tf.reshape(tf.reduce_sum(alpha_exp, axis=1),[-1,1]) #(batch_size, vocab_size)
+    one_hot_scores = tf.nn.softmax(alpha * output)
+    return one_hot_scores
+
+  def soft_top_k(alpha, output, K):
+    copy = tf.identity(output)
+    p = []
+    arg_top_k = []
+    for k in range(K):
+      sargmax = soft_argmax(alpha, copy)
+      copy = (1-sargmax)* copy
+      p.append(tf.reduce_sum(sargmax * output, axis=1))
+      arg_top_k.append(sargmax)
+
+    return tf.stack(p, axis=1), tf.stack(arg_top_k)
+
+  with variable_scope.variable_scope("ScheduledEmbedding"):
+    # Return -1s where we did not sample, and sample_ids elsewhere
+    select_sampler = bernoulli.Bernoulli(probs=sampling_probability, dtype=tf.bool)
+    select_sample = select_sampler.sample(sample_shape=hps.batch_size)
+    sample_id_sampler = categorical.Categorical(probs=output) # equals to argmax{ Multinomial(output, total_count=1) }, our greedy search selection
+    sample_ids = array_ops.where(
+            select_sample,
+            sample_id_sampler.sample(seed=123),
+            gen_array_ops.fill([hps.batch_size], -1))
+
+    where_sampling = math_ops.cast(
+        array_ops.where(sample_ids > -1), tf.int32)
+    where_not_sampling = math_ops.cast(
+        array_ops.where(sample_ids <= -1), tf.int32)
+
+    if hps.greedy_scheduled_sampling:
+      sample_ids = tf.argmax(output, axis=1, output_type=tf.int32)
+
+    sample_ids_sampling = array_ops.gather_nd(sample_ids, where_sampling)
+    inputs_not_sampling = array_ops.gather_nd(inp, where_not_sampling)
+
+    if hps.E2EBackProp:
+      if hps.hard_argmax:
+        greedy_search_prob, greedy_search_sample = tf.nn.top_k(output, k=hps.k) # (batch_size, k)
+        greedy_search_prob_normalized = greedy_search_prob/tf.reshape(tf.reduce_sum(greedy_search_prob,axis=1),[-1,1])
+        greedy_embedding = tf.nn.embedding_lookup(embedding, greedy_search_sample)
+        normalized_embedding = tf.multiply(tf.reshape(greedy_search_prob_normalized,[hps.batch_size,hps.k,1]), greedy_embedding)
+        e2e_embedding = tf.reduce_mean(normalized_embedding,axis=1)
+      else:
+        e = []
+        greedy_search_prob, greedy_search_sample = soft_top_k(alpha, output,
+                                                              K=hps.k)  # (batch_size, k), (k, batch_size, vocab_size)
+        greedy_search_prob_normalized = greedy_search_prob / tf.reshape(tf.reduce_sum(greedy_search_prob, axis=1),
+                                                                        [-1, 1])
+
+        for _ in range(hps.k):
+          a_k = greedy_search_sample[_]
+          e_k = tf.matmul(tf.reshape(greedy_search_prob_normalized[:,_],[-1,1]) * a_k, embedding)
+          e.append(e_k)
+        e2e_embedding = tf.reduce_sum(e, axis=0) # (batch_size, emb_dim)
+      sampled_next_inputs = array_ops.gather_nd(e2e_embedding, where_sampling)
+    else:
+      if hps.hard_argmax:
+        sampled_next_inputs = tf.nn.embedding_lookup(embedding, sample_ids_sampling)
+      else: # using soft armax (greedy) proposed in: https://arxiv.org/abs/1704.06970
+        #alpha_exp = tf.exp(alpha * (output_not_extended + G)) # (batch_size, vocab_size)
+        #one_hot_scores = alpha_exp / tf.reduce_sum(alpha_exp, axis=1) #(batch_size, vocab_size)
+        one_hot_scores = soft_argmax(alpha, output) #(batch_size, vocab_size)
+        soft_argmax_embedding = tf.matmul(one_hot_scores, embedding) #(batch_size, emb_size)
+        sampled_next_inputs = array_ops.gather_nd(soft_argmax_embedding, where_sampling)
 
     base_shape = array_ops.shape(inp)
     result1 = array_ops.scatter_nd(indices=where_sampling, updates=sampled_next_inputs, shape=base_shape)

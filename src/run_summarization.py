@@ -16,31 +16,25 @@
 
 """This is the top-level file to train, evaluate or test your summarization model"""
 
-import sys
 import time
 import os
 import tensorflow as tf
-import numpy as np
 from collections import namedtuple
 from data import Vocab
 from batcher import Batcher
 from model import SummarizationModel
 from decode import BeamSearchDecoder
-import util
+import util as util
 import numpy as np
 from glob import glob
 from tensorflow.python import debug as tf_debug
 from replay_buffer import ReplayBuffer
 from dqn import DQN
 from threading import Thread
-import pickle
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import nn_ops
-from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import gen_array_ops
 from tensorflow.python.ops import math_ops
-from tensorflow.python.ops.distributions import categorical
 from tensorflow.python.ops.distributions import bernoulli
 
 FLAGS = tf.app.flags.FLAGS
@@ -57,6 +51,11 @@ tf.app.flags.DEFINE_integer('decode_after', 0, 'skip already decoded docs')
 # Where to save output
 tf.app.flags.DEFINE_string('log_root', '', 'Root directory for all logging.')
 tf.app.flags.DEFINE_string('exp_name', '', 'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
+
+# batcher parameter, for consistent results, set all these parameters to 1
+tf.app.flags.DEFINE_integer('example_queue_threads', 4, 'Number of example queue threads,')
+tf.app.flags.DEFINE_integer('batch_queue_threads', 2, 'Number of batch queue threads.')
+tf.app.flags.DEFINE_integer('bucketing_cache_size', 100, 'Number of bucketing cache size.')
 
 # Hyperparameters
 tf.app.flags.DEFINE_integer('enc_hidden_dim', 256, 'dimension of RNN hidden states')
@@ -122,6 +121,8 @@ tf.app.flags.DEFINE_boolean('greedy_scheduled_sampling', False, 'Whether to use 
 tf.app.flags.DEFINE_boolean('E2EBackProp', False, 'Whether to use E2EBackProp algorithm to solve exposure bias')
 tf.app.flags.DEFINE_float('alpha', 1, 'soft argmax argument')
 tf.app.flags.DEFINE_integer('k', 1, 'number of samples')
+tf.app.flags.DEFINE_boolean('scheduled_sampling_final_dist', True, 'Whether to use final distribution or vocab distribution for scheduled sampling')
+
 
 # Coverage hyperparameters
 tf.app.flags.DEFINE_boolean('coverage', False, 'Use coverage mechanism. Note, the experiments reported in the ACL paper train WITHOUT coverage until converged, and then train for a short phase WITH coverage afterwards. i.e. to reproduce the results in the ACL paper, turn this off for most of training then turn on for a short phase at the end.')
@@ -168,22 +169,22 @@ class Seq2Seq(object):
 
     # Initialize all vars in the model
     sess = tf.Session(config=util.get_config())
-    print "Initializing all variables..."
+    print("Initializing all variables...")
     sess.run(tf.initialize_all_variables())
 
     # Restore the best model from eval dir
     saver = tf.train.Saver([v for v in tf.all_variables() if "Adagrad" not in v.name])
-    print "Restoring all non-adagrad variables from best model in eval dir..."
+    print("Restoring all non-adagrad variables from best model in eval dir...")
     curr_ckpt = util.load_ckpt(saver, sess, "eval")
-    print "Restored %s." % curr_ckpt
+    print("Restored %s." % curr_ckpt)
 
     # Save this model to train dir and quit
     new_model_name = curr_ckpt.split("/")[-1].replace("bestmodel", "model")
     new_fname = os.path.join(FLAGS.log_root, "train", new_model_name)
-    print "Saving model to %s..." % (new_fname)
+    print("Saving model to %s..." % (new_fname))
     new_saver = tf.train.Saver() # this saver saves all variables that now exist, including Adagrad variables
     new_saver.save(sess, new_fname)
-    print "Saved."
+    print("Saved.")
     exit()
 
   def restore_best_eval_model(self):
@@ -213,21 +214,21 @@ class Seq2Seq(object):
 
     # initialize an entire coverage model from scratch
     sess = tf.Session(config=util.get_config())
-    print "initializing everything..."
+    print("initializing everything...")
     sess.run(tf.global_variables_initializer())
 
     # load all non-coverage weights from checkpoint
     saver = tf.train.Saver([v for v in tf.global_variables() if "coverage" not in v.name and "Adagrad" not in v.name])
-    print "restoring non-coverage variables..."
+    print("restoring non-coverage variables...")
     curr_ckpt = util.load_ckpt(saver, sess)
-    print "restored."
+    print("restored.")
 
     # save this model and quit
     new_fname = curr_ckpt + '_cov_init'
-    print "saving model to %s..." % (new_fname)
+    print("saving model to %s..." % (new_fname))
     new_saver = tf.train.Saver() # this one will save all variables that now exist
     new_saver.save(sess, new_fname)
-    print "saved."
+    print("saved.")
     exit()
 
   def convert_to_reinforce_model(self):
@@ -236,21 +237,21 @@ class Seq2Seq(object):
 
     # initialize an entire reinforce model from scratch
     sess = tf.Session(config=util.get_config())
-    print "initializing everything..."
+    print("initializing everything...")
     sess.run(tf.global_variables_initializer())
 
     # load all non-reinforce weights from checkpoint
     saver = tf.train.Saver([v for v in tf.global_variables() if "reinforce" not in v.name and "Adagrad" not in v.name])
-    print "restoring non-reinforce variables..."
+    print("restoring non-reinforce variables...")
     curr_ckpt = util.load_ckpt(saver, sess)
-    print "restored."
+    print("restored.")
 
     # save this model and quit
     new_fname = curr_ckpt + '_rl_init'
-    print "saving model to %s..." % (new_fname)
+    print("saving model to %s..." % (new_fname))
     new_saver = tf.train.Saver() # this one will save all variables that now exist
     new_saver.save(sess, new_fname)
-    print "saved."
+    print("saved.")
     exit()
 
   def setup_training(self):
@@ -728,7 +729,7 @@ class Seq2Seq(object):
     tf.set_random_seed(111) # a seed value for randomness
 
     if self.hps.mode == 'train':
-      print "creating model..."
+      print("creating model...")
       self.model = SummarizationModel(self.hps, self.vocab)
       if FLAGS.ac_training:
         # current DQN with paramters \Psi

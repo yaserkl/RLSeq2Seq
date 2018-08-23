@@ -1,4 +1,4 @@
-import Queue
+import queue
 from random import shuffle
 from random import seed
 seed(123)
@@ -117,8 +117,8 @@ class ReplayBuffer(object):
     self._hps = hps
     self._buffer = CustomQueue(self._hps.dqn_replay_buffer_size)
 
-    self._batch_queue = Queue.Queue(self.BATCH_QUEUE_MAX)
-    self._example_queue = Queue.Queue(self.BATCH_QUEUE_MAX * self._hps.dqn_batch_size)
+    self._batch_queue = queue.Queue(self.BATCH_QUEUE_MAX)
+    self._example_queue = queue.Queue(self.BATCH_QUEUE_MAX * self._hps.dqn_batch_size)
     self._num_example_q_threads = 1 # num threads to fill example queue
     self._num_batch_q_threads = 1  # num threads to fill batch queue
     self._bucketing_cache_size = 100 # how many batches-worth of examples to load into cache before bucketing

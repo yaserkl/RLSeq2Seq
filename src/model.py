@@ -702,41 +702,19 @@ class SummarizationModel(object):
         feed_dict[self._sampling_probability] = min(step * self._hps.sampling_probability.value,1.) # linear decay function
       ranges = [np.exp(float(step) * self._hps.alpha.value),np.finfo(np.float64).max] # to avoid overflow
       feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function
-
     if self._hps.ac_training.value:
       self.q_estimates = q_estimates
       feed_dict[self._q_estimates]= self.q_estimates
-
-    if self._hps.rl_training.value:
-      sampled_sentence_r_values = []
-      greedy_sentence_r_values = []
-      #### takes the sampled and greed_search sentence to calculate the reward measure
-      to_return = {
-        'sampled_sentences': self.sampled_sentences,
-        'greedy_search_sentences': self.greedy_search_sentences
-      }
-      ret_dict = sess.run(to_return, feed_dict)
-      # calculate reward
-      for sampled_sentence, greedy_search_sentence, target_sentence in zip(ret_dict['sampled_sentences'],ret_dict['greedy_search_sentences'],batch.target_batch):
-         # optimizing based on reward function measure
-        reference_sent = ' '.join([str(k) for k in target_sentence])
-        sampled_sent = ' '.join([str(k) for k in sampled_sentence])
-        sampled_sentence_r_values.append(self.reward_function(reference_sent, sampled_sent, self._hps.reward_function.value))
-        greedy_sent = ' '.join([str(k) for k in greedy_search_sentence])
-        greedy_sentence_r_values.append(self.reward_function(reference_sent, greedy_sent, self._hps.reward_function.value))
-
     to_return = {
         'summaries': self._summaries,
         'pgen_loss': self._pgen_loss,
         'global_step': self.global_step,
+        'decoder_outputs': self.decoder_outputs
     }
 
     if self._hps.rl_training.value:
-      to_return['sampled_sentence_r_values']= self._sampled_sentence_r_values
-      to_return['greedy_sentence_r_values']= self._greedy_sentence_r_values
-
-      feed_dict[self._sampled_sentence_r_values]=sampled_sentence_r_values
-      feed_dict[self._greedy_sentence_r_values]=greedy_sentence_r_values
+      to_return['sampled_sentence_r_values'] = self._sampled_rouges
+      to_return['greedy_sentence_r_values'] = self._greedy_rouges
 
     if self._hps.coverage.value:
       to_return['coverage_loss'] = self._coverage_loss
@@ -749,6 +727,7 @@ class SummarizationModel(object):
       to_return['rl_loss']= self._rl_loss
       to_return['rl_avg_logprobs']= self._rl_avg_logprobs
 
+    # We feed the collected reward and feed it back to model to update the loss
     return sess.run(to_return, feed_dict)
 
   def run_encoder(self, sess, batch):

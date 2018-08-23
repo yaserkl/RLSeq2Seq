@@ -123,7 +123,7 @@ class Example(object):
 class Batch(object):
   """Class representing a minibatch of train/val/test examples for text summarization."""
 
-  def __init__(self, example_list, hp, vocab):
+  def __init__(self, example_list, hps, vocab):
     """Turns the example_list into a Batch object.
 
     Args:
@@ -162,7 +162,7 @@ class Batch(object):
 
     # Initialize the numpy arrays
     # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
-    self.enc_batch = np.zeros((hps.batch_size.value, hmax_enc_seq_len), dtype=np.int32)
+    self.enc_batch = np.zeros((hps.batch_size.value, max_enc_seq_len), dtype=np.int32)
     self.enc_lens = np.zeros((hps.batch_size.value), dtype=np.int32)
     self.enc_padding_mask = np.zeros((hps.batch_size.value, max_enc_seq_len), dtype=np.float32)
 

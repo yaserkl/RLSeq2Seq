@@ -81,7 +81,7 @@ Requirements
 -------------
 Python
 -------------
-  - Use Python 2.7
+  - Use Python 3.5
 
 Python requirements can be installed as follows:
 
@@ -93,14 +93,13 @@ Python requirements can be installed as follows:
 TensorFlow
 -------------
 
-  - Use Tensorflow 1.4
+  - Tensorflow 1.10.0
 
 -------------
 GPU
 -------------
 
-  - CUDA 8
-  - CUDNN 6
+  - CUDA 9
 
 ---------------------------------------------------------------------------
 

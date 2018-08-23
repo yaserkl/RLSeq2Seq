@@ -259,11 +259,15 @@ def abstract2sents(abstract):
 
   Returns:
     sents: List of sentence strings (no tags)"""
+  abstract = abstract.decode(encoding="utf-8", errors="strict")
   cur = 0
   sents = []
   while True:
     try:
-      start_p = abstract.index(SENTENCE_START, cur)
+      # print("SENCENCE TYPE:",type(SENTENCE_START))
+      # print("CUR TYPE:", type(cur))
+      # print("ABSTRACT", type(abstract))
+      start_p = abstract.index(SENTENCE_START,cur)
       end_p = abstract.index(SENTENCE_END, start_p + 1)
       cur = end_p + len(SENTENCE_END)
       sents.append(abstract[start_p+len(SENTENCE_START):end_p])

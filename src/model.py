@@ -194,6 +194,7 @@ class SummarizationModel(object):
       self._max_art_oovs,
       self._enc_batch_extend_vocab,
       emb_dec_inputs,
+      self._target_batch,
       self._dec_in_state,
       self._enc_states,
       self._enc_padding_mask,
@@ -224,6 +225,15 @@ class SummarizationModel(object):
     embedding.metadata_path = vocab_metadata_path
     projector.visualize_embeddings(summary_writer, config)
 
+  def discount_rewards(self, r):
+    """ take a list of size max_dec_step * (batch_size, k) and return a list of the same size """
+    discounted_r = tf.zeros_like(r)
+    running_add = tf.constant(0, tf.float32)
+    for t in reversed(range(0, len(r))):
+      running_add = running_add * self._hps.gamma.value + r[t]
+      discounted_r[t] = running_add
+    return discounted_r
+
   def _add_seq2seq(self):
     """Add the whole sequence-to-sequence model to the graph."""
     hps = self._hps
@@ -253,16 +263,18 @@ class SummarizationModel(object):
 
       # Add the decoder.
       with tf.variable_scope('decoder'):
-        self.decoder_outputs, self._dec_out_state, self.attn_dists, self.p_gens, self.coverage, self.vocab_scores, self.final_dists, self.samples, self.greedy_search_samples, self.temporal_es = self._add_decoder(emb_dec_inputs, embedding)
+        (self.decoder_outputs, self._dec_out_state, self.attn_dists, self.p_gens, self.coverage, self.vocab_scores,
+         self.final_dists, self.samples, self.greedy_search_samples, self.temporal_es,
+         self.sampling_rewards, self.greedy_rewards) = self._add_decoder(emb_dec_inputs, embedding)
 
       if hps.mode.value in ['train', 'eval']:
-        if hps.ac_training.value or hps.rl_training.value:
+        if hps.rl_training.value and FLAGS.use_discounted_rewards:
+          self.sampling_discounted_rewards = tf.stack(self.discount_rewards(tf.unstack(self.sampling_rewards))) # list of max_dec_steps * (batch_size, k)
+          self.greedy_discounted_rewards = tf.stack(self.discount_rewards(tf.unstack(self.greedy_rewards))) # list of max_dec_steps * (batch_size, k)
+        if hps.ac_training.value:
           # Get the sampled and greedy sentence from model output
           self.sampled_sentences = tf.transpose(tf.stack(self.samples), perm=[1,2,0]) # (batch_size, k, <=max_dec_steps) word indices
           self.greedy_search_sentences = tf.transpose(tf.stack(self.greedy_search_samples), perm=[1,2,0]) # (batch_size, k, <=max_dec_steps) word indices
-        else:
-          self.sampled_sentences = []
-          self.greedy_search_sentences = []
 
     if hps.mode.value == "decode":
       # We run decode beam search mode one decoder step at a time
@@ -331,9 +343,17 @@ class SummarizationModel(object):
         self._greedy_rouges = []
         self._reward_diff = []
         for _ in range(self._hps.k.value):
-          self._sampled_rouges.append(rouge_l_fscore(self.sampled_sentences[:, _, :], self._target_batch))
-          self._greedy_rouges.append(rouge_l_fscore(self.greedy_search_sentences[:, _, :], self._target_batch))
-          self._reward_diff.append(self._sampled_rouges[_] - self._greedy_rouges[_])
+          if FLAGS.use_discounted_rewards:
+            self._sampled_rouges.append(self.sampling_discounted_rewards[:, :, _]) # shape (max_enc_steps, batch_size)
+            self._greedy_rouges.append(self.greedy_discounted_rewards[:, :, _]) # shape (max_enc_steps, batch_size)
+          else:
+            # use the reward of last step, since we use the reward of the whole sentence in this case
+            self._sampled_rouges.append(self.sampling_rewards[:, _]) # shape (batch_size)
+            self._greedy_rouges.append(self.greedy_rewards[:, _]) # shape (batch_size)
+          if FLAGS.self_critic:
+            self._reward_diff.append(self._greedy_rouges[_]-self._sampled_rouges[_])
+          else:
+            self._reward_diff.append(self._sampled_rouges[_])
         for dec_step, dist in enumerate(self.final_dists):
           _targets = self.samples[dec_step] # The indices of the sampled words. shape (batch_size, k)
           for _k, targets in enumerate(tf.unstack(_targets,axis=1)): # list of k samples of size (batch_size)
@@ -343,8 +363,10 @@ class SummarizationModel(object):
             loss_per_step.append(losses)
             # Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
             # Equal reward for all tokens
-            rl_losses = -tf.log(gold_probs) * self._reward_diff[_k]
-            #rl_losses = -tf.log(gold_probs) * (self._sampled_sentence_r_values[_k]-self._greedy_sentence_r_values[_k])
+            if FLAGS.use_discounted_rewards:
+              rl_losses = -tf.log(gold_probs) * self._reward_diff[_k][dec_step, :]  # positive values
+            else:
+              rl_losses = -tf.log(gold_probs) * self._reward_diff[_k] # positive values
             rl_loss_per_step.append(rl_losses)
 
         # new size: (k, max_dec_steps, batch_size)
@@ -511,7 +533,7 @@ class SummarizationModel(object):
     R = np.zeros((self._hps.max_dec_steps.value, vsize_extended)) # shape (max_dec_steps, vocab_size)
     Q = np.zeros((self._hps.max_dec_steps.value, vsize_extended)) # shape (max_dec_steps, vocab_size)
     for t in range(self._hps.max_dec_steps.value,0,-1):
-      R[t-1][:] = self.reward(t, _ss,_gts, vsize_extended)
+      R[t-1][:] = self.reward(t, _ss, _gts, vsize_extended)
       # We find true Q-values.
       # Eq. 30 in https://arxiv.org/pdf/1805.09461.pdf
       try:
@@ -642,13 +664,13 @@ class SummarizationModel(object):
       if self._hps.fixed_eta.value:
         feed_dict[self._eta] = self._hps.eta.value
       else:
-        feed_dict[self._eta] = min(step * self._hps.eta.value,1.)
+        feed_dict[self._eta] = min(step * self._hps.eta.value, 1.)
     if self._hps.scheduled_sampling.value:
       if self._hps.fixed_sampling_probability.value:
         feed_dict[self._sampling_probability] = self._hps.sampling_probability.value
       else:
-        feed_dict[self._sampling_probability] = min(step * self._hps.sampling_probability.value,1.) # linear decay function
-      ranges = [np.exp(float(step) * self._hps.alpha.value),np.finfo(np.float64).max] # to avoid overflow
+        feed_dict[self._sampling_probability] = min(step * self._hps.sampling_probability.value, 1.) # linear decay function
+      ranges = [np.exp(float(step) * self._hps.alpha.value), np.finfo(np.float64).max] # to avoid overflow
       feed_dict[self._alpha] = np.log(ranges[np.argmin(ranges)]) # linear decay function
     if self._hps.ac_training.value:
       self.q_estimates = q_estimates

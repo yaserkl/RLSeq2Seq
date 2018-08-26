@@ -15,8 +15,10 @@
 # ==============================================================================
 
 """This file contains code to process data into batches"""
-
-import queue
+try:
+  import queue
+except:
+  import Queue as queue
 from random import shuffle
 from random import seed
 seed(123)
@@ -295,7 +297,7 @@ class Batcher(object):
 
     while True:
       try:
-        (article, abstract) = next(input_gen) # read the next example from file. article and abstract are both strings.
+        (article, abstract) = input_gen.next() # read the next example from file. article and abstract are both strings.
       except StopIteration: # if there are no more examples:
         tf.logging.info("The example generator for this example queue filling thread has exhausted data.")
         if self._single_pass:
@@ -362,7 +364,7 @@ class Batcher(object):
       example_generator: a generator of tf.Examples from file. See data.example_generator"""
     cnt = 0
     while True:
-      e = next(example_generator) # e is a tf.Example
+      e = example_generator.next() # e is a tf.Example
       try:
         article_text = e.features.feature['article'].bytes_list.value[0] # the article text was saved under the key 'article' in the data files
         abstract_text = e.features.feature['abstract'].bytes_list.value[0] # the abstract text was saved under the key 'abstract' in the data files

@@ -1,4 +1,7 @@
-import queue
+try:
+  import queue
+except:
+  import Queue as queue
 from random import shuffle
 from random import seed
 seed(123)

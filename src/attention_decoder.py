@@ -411,25 +411,28 @@ def attention_decoder(_hps,
         _greedy_rewards = []
         for _ in range(_hps.k.value):
           rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(samples)[:, :, _]),
-                                     target_batch[:, :(i + 1)]) # shape (batch_size, 1)
+                                     target_batch[:, :(i + 1)])  # shape (batch_size, 1)
           _sampling_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
           rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(greedy_search_samples)[:, :, _]),
                                      target_batch[:, :(i + 1)])  # shape (batch_size, 1)
           _greedy_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
-        sampling_rewards.append(tf.squeeze(tf.stack(_sampling_rewards, axis=1), axis = -1)) # (batch_size, k)
-        greedy_rewards.append(tf.squeeze(tf.stack(_greedy_rewards, axis=1), axis = -1))  # (batch_size, k)
-      else:
-        _sampling_rewards = []
-        _greedy_rewards = []
-        for _ in range(_hps.k.value):
-          rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(samples)[:, :, _]),
-                                     target_batch) # shape (batch_size, 1)
-          _sampling_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
-          rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(greedy_search_samples)[:, :, _]),
-                                     target_batch)  # shape (batch_size, 1)
-          _greedy_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
-        sampling_rewards.append(tf.squeeze(tf.stack(_sampling_rewards, axis=1), axis = -1)) # (batch_size, k)
-        greedy_rewards.append(tf.squeeze(tf.stack(_greedy_rewards, axis=1), axis = -1))  # (batch_size, k)
+        sampling_rewards.append(tf.squeeze(tf.stack(_sampling_rewards, axis=1), axis=-1))  # (batch_size, k)
+        greedy_rewards.append(tf.squeeze(tf.stack(_greedy_rewards, axis=1), axis=-1))  # (batch_size, k)
+
+    if FLAGS.use_discounted_rewards:
+      sampling_rewards = tf.stack(sampling_rewards)
+      greedy_rewards = tf.stack(greedy_rewards)
+    else:
+      _sampling_rewards = []
+      _greedy_rewards = []
+      for _ in range(_hps.k.value):
+        rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(samples)[:, :, _]), target_batch)  # shape (batch_size, 1)
+        _sampling_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
+        rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(greedy_search_samples)[:, :, _]),
+                                   target_batch)  # shape (batch_size, 1)
+        _greedy_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
+      sampling_rewards = tf.squeeze(tf.stack(_sampling_rewards, axis=1), axis=-1)  # (batch_size, k)
+      greedy_rewards = tf.squeeze(tf.stack(_greedy_rewards, axis=1), axis=-1)  # (batch_size, k)
     # If using coverage, reshape it
     if coverage is not None:
       coverage = array_ops.reshape(coverage, [batch_size, -1])

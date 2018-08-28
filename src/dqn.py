@@ -43,9 +43,9 @@ class DQN(object):
             # in dueling net, we have two extra output layers; one for value function estimation
             # and the other for advantage estimation, we then use the difference between these two layers
             # to calculate the q-estimation
-            self.value_layer = tf.layers.dense(h, units = 1, activation = tf.identity, name='{}_value'.format(self._name_variable))
+            self_layer = tf.layers.dense(h, units = 1, activation = tf.identity, name='{}_value'.format(self._name_variable))
             normalized_al = self.advantage_layer-tf.reshape(tf.reduce_mean(self.advantage_layer,axis=1),[-1,1]) # equation 9 in https://arxiv.org/pdf/1511.06581.pdf
-            value_extended = tf.concat([self.value_layer] * self._hps.vocab_size, axis=1)
+            value_extended = tf.concat([self_layer] * self._hps.vocab_size, axis=1)
             self.output = value_extended + normalized_al
         else:
             self.output = self.advantage_layer

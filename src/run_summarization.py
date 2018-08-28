@@ -198,7 +198,7 @@ class Seq2Seq(object):
     for ef in event_files:
       try:
         for e in tf.train.summary_iterator(ef):
-          for v in e.summary.value:
+          for v in e.summary:
             step = e.step
             if 'running_avg_loss/decay' in v.tag:
               running_avg_loss = v.simple_value
@@ -701,7 +701,7 @@ class Seq2Seq(object):
     hps_dict = {}
     for key,val in flags.items(): # for each flag
       if key in hparam_list: # if it's in the list
-        hps_dict[key] = val # add it to the dict
+        hps_dict[key] = val.value # add it to the dict
     if FLAGS.ac_training:
       hps_dict.update({'dqn_input_feature_len':(FLAGS.dec_hidden_dim)})
     self.hps = namedtuple("HParams", hps_dict.keys())(**hps_dict)
@@ -720,7 +720,7 @@ class Seq2Seq(object):
       hps_dict = {}
       for key,val in flags.items(): # for each flag
         if key in hparam_list: # if it's in the list
-          hps_dict[key] = val # add it to the dict
+          hps_dict[key] = val.value # add it to the dict
       hps_dict.update({'dqn_input_feature_len':(FLAGS.dec_hidden_dim)})
       hps_dict.update({'vocab_size':self.vocab.size()})
       self.dqn_hps = namedtuple("HParams", hps_dict.keys())(**hps_dict)
@@ -730,7 +730,7 @@ class Seq2Seq(object):
 
     tf.set_random_seed(111) # a seed value for randomness
 
-    if self.hps.mode.value == 'train':
+    if self.hps.mode == 'train':
       print("creating model...")
       self.model = SummarizationModel(self.hps, self.vocab)
       if FLAGS.ac_training:
@@ -739,13 +739,13 @@ class Seq2Seq(object):
         # target DQN with paramters \Psi^{\prime}
         self.dqn_target = DQN(self.dqn_hps,'target')
       self.setup_training()
-    elif self.hps.mode.value == 'eval':
+    elif self.hps.mode == 'eval':
       self.model = SummarizationModel(self.hps, self.vocab)
       if FLAGS.ac_training:
         self.dqn = DQN(self.dqn_hps,'current')
         self.dqn_target = DQN(self.dqn_hps,'target')
       self.run_eval()
-    elif self.hps.mode.value == 'decode':
+    elif self.hps.mode == 'decode':
       decode_model_hps = self.hps  # This will be the hyperparameters for the decoder model
       decode_model_hps = self.hps._replace(max_dec_steps=1) # The model is configured with max_dec_steps=1 because we only ever run one step of the decoder at a time (to do beam search). Note that the batcher is initialized with max_dec_steps equal to e.g. 100 because the batches need to contain the full summaries
       model = SummarizationModel(decode_model_hps, self.vocab)

@@ -89,8 +89,8 @@ def attention_decoder(_hps,
   embedding, 
   sampling_probability,
   alpha,
-  unk_id, 
-  initial_state_attention=False, 
+  unk_id,
+  initial_state_attention=False,
   pointer_gen=True, 
   use_coverage=False, 
   prev_coverage=None, 
@@ -292,7 +292,7 @@ def attention_decoder(_hps,
             masked_e = nn_ops.softmax(e_not_masked) * dec_padding_mask[:,:len_dec_states] # (batch_size,len(decoder_states))
           if len_dec_states <= 1:
             masked_e = array_ops.ones([batch_size,1]) # first step is filled with equal values
-            masked_sums = tf.reshape(tf.reduce_sum(masked_e,axis=1),[-1,1]) # (batch_size,1), # if it's zero due to masking we set it to a small value
+          masked_sums = tf.reshape(tf.reduce_sum(masked_e,axis=1),[-1,1]) # (batch_size,1), # if it's zero due to masking we set it to a small value
           decoder_attn_dist = masked_e / masked_sums # (batch_size,len(decoder_states))
           context_decoder_vector = math_ops.reduce_sum(array_ops.reshape(decoder_attn_dist, [batch_size, -1, 1, 1]) * _decoder_states, [1, 2]) # (batch_size, attn_size)
           context_decoder_vector = array_ops.reshape(context_decoder_vector, [-1, attn_dec_size]) # (batch_size, attn_size)
@@ -410,14 +410,14 @@ def attention_decoder(_hps,
         _sampling_rewards = []
         _greedy_rewards = []
         for _ in range(_hps.k):
-          rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(samples)[:, :, _]),
-                                     target_batch[:, :(i + 1)])  # shape (batch_size, 1)
+          rl_fscore = tf.reshape(rouge_l_fscore(tf.transpose(tf.stack(samples)[:, :, _]), target_batch),
+                                 [-1, 1])  # shape (batch_size, 1)
           _sampling_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
-          rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(greedy_search_samples)[:, :, _]),
-                                     target_batch[:, :(i + 1)])  # shape (batch_size, 1)
+          rl_fscore = tf.reshape(rouge_l_fscore(tf.transpose(tf.stack(greedy_search_samples)[:, :, _]), target_batch),
+                                 [-1, 1])  # shape (batch_size, 1)
           _greedy_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
-        sampling_rewards.append(tf.squeeze(tf.stack(_sampling_rewards, axis=1), axis=-1))  # (batch_size, k)
-        greedy_rewards.append(tf.squeeze(tf.stack(_greedy_rewards, axis=1), axis=-1))  # (batch_size, k)
+        sampling_rewards.append(tf.squeeze(tf.stack(_sampling_rewards, axis=1), axis = -1)) # (batch_size, k)
+        greedy_rewards.append(tf.squeeze(tf.stack(_greedy_rewards, axis=1), axis = -1))  # (batch_size, k)
 
     if FLAGS.use_discounted_rewards:
       sampling_rewards = tf.stack(sampling_rewards)
@@ -426,20 +426,19 @@ def attention_decoder(_hps,
       _sampling_rewards = []
       _greedy_rewards = []
       for _ in range(_hps.k):
-        rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(samples)[:, :, _]), target_batch)  # shape (batch_size, 1)
+        rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(samples)[:, :, _]), target_batch) # shape (batch_size, 1)
         _sampling_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
-        rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(greedy_search_samples)[:, :, _]),
-                                   target_batch)  # shape (batch_size, 1)
+        rl_fscore = rouge_l_fscore(tf.transpose(tf.stack(greedy_search_samples)[:, :, _]), target_batch)  # shape (batch_size, 1)
         _greedy_rewards.append(tf.reshape(rl_fscore, [-1, 1]))
-      sampling_rewards = tf.squeeze(tf.stack(_sampling_rewards, axis=1), axis=-1)  # (batch_size, k)
-      greedy_rewards = tf.squeeze(tf.stack(_greedy_rewards, axis=1), axis=-1)  # (batch_size, k)
+      sampling_rewards = tf.squeeze(tf.stack(_sampling_rewards, axis=1), axis=-1) # (batch_size, k)
+      greedy_rewards = tf.squeeze(tf.stack(_greedy_rewards, axis=1), axis=-1) # (batch_size, k)
     # If using coverage, reshape it
     if coverage is not None:
       coverage = array_ops.reshape(coverage, [batch_size, -1])
 
   return (
   outputs, state, attn_dists, p_gens, coverage, vocab_scores, final_dists, samples, greedy_search_samples, temporal_e,
-  tf.stack(sampling_rewards), tf.stack(greedy_rewards))
+  sampling_rewards, greedy_rewards)
 
 def scheduled_sampling(hps, sampling_probability, output, embedding, inp, alpha = 0):
   # borrowed ideas from https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/ScheduledEmbeddingTrainingHelper

@@ -127,7 +127,7 @@ def rouge_l_sentence_level(eval_sentences, ref_sentences):
     n = len(eval_sentence)
     lcs = _len_lcs(eval_sentence, ref_sentence)
     f1_scores.append(_f_lcs(lcs, m, n))
-  return np.mean(f1_scores, dtype=np.float32)
+  return np.array(f1_scores).astype(np.float32)
 
 
 def rouge_l_fscore(hypothesis, references, **unused_kwargs):
@@ -137,18 +137,13 @@ def rouge_l_fscore(hypothesis, references, **unused_kwargs):
   or decode the ids and tokenize the output.
 
   Args:
-    predictions: tensor, model predictions, [batch_size, input_length] tensor.
-    labels: tensor, gold output, [batch_size, input_length] tensor.
+    predictions: tensor, model predictions (batch_size, <=max_dec_steps)
+    labels: tensor, gold output. (batch_size, max_dec_steps)
 
   Returns:
     rouge_l_fscore: approx rouge-l f1 score.
   """
-  #outputs = tf.to_int32(tf.argmax(predictions, axis=-1))
-  # Convert the outputs and labels to a [batch_size, input_length] tensor.
-  #outputs = tf.squeeze(outputs, axis=[-1, -2])
-  #labels = tf.squeeze(labels, axis=[-1, -2])
-  rouge_l_f_score = tf.py_func(rouge_l_sentence_level, (hypothesis, references),
-                               tf.float32)
+  rouge_l_f_score = tf.py_func(rouge_l_sentence_level, (hypothesis, references), [tf.float32])
   return rouge_l_f_score
 
 
@@ -210,7 +205,7 @@ def rouge_n(eval_sentences, ref_sentences, n=2):
     f1_scores.append(2.0 * ((precision * recall) / (precision + recall + 1e-8)))
 
   # return overlapping_count / reference_count
-  return np.mean(f1_scores, dtype=np.float32)
+  return np.array(f1_scores).astype(np.float32)
 
 
 def rouge_2_fscore(predictions, labels, **unused_kwargs):
@@ -220,16 +215,12 @@ def rouge_2_fscore(predictions, labels, **unused_kwargs):
   or decode the ids and tokenize the output.
 
   Args:
-    predictions: tensor, model predictions
-    labels: tensor, gold output.
+    predictions: tensor, model predictions (batch_size, <=max_dec_steps)
+    labels: tensor, gold output. (batch_size, max_dec_steps)
 
   Returns:
     rouge2_fscore: approx rouge-2 f1 score.
   """
 
-  outputs = tf.to_int32(tf.argmax(predictions, axis=-1))
-  # Convert the outputs and labels to a [batch_size, input_length] tensor.
-  outputs = tf.squeeze(outputs, axis=[-1, -2])
-  labels = tf.squeeze(labels, axis=[-1, -2])
-  rouge_2_f_score = tf.py_func(rouge_n, (outputs, labels), tf.float32)
+  rouge_2_f_score = tf.py_func(rouge_n, (predictions, labels), [tf.float32])
   return rouge_2_f_score, tf.constant(1.0)

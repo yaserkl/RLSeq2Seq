@@ -83,6 +83,7 @@ tf.app.flags.DEFINE_boolean('pointer_gen', True, 'If True, use pointer-generator
 tf.app.flags.DEFINE_boolean('rl_training', False, 'Use policy-gradient training by collecting rewards at the end of sequence.')
 tf.app.flags.DEFINE_boolean('self_critic', True, 'Uses greedy sentence reward as baseline.')
 tf.app.flags.DEFINE_boolean('use_discounted_rewards', False, 'Whether to use discounted rewards.')
+tf.app.flags.DEFINE_boolean('use_intermediate_rewards', False, 'Whether to use intermediate rewards.')
 tf.app.flags.DEFINE_boolean('convert_to_reinforce_model', False, 'Convert a pointer model to a reinforce model. Turn this on and run in train mode. Your current training model will be copied to a new version (same name with _cov_init appended) that will be ready to run with coverage flag turned on, for the coverage training stage.')
 tf.app.flags.DEFINE_boolean('intradecoder', False, 'Use intradecoder attention or not')
 tf.app.flags.DEFINE_boolean('use_temporal_attention', False, 'Whether to use temporal attention or not')

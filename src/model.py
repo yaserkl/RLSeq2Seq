@@ -78,11 +78,6 @@ class SummarizationModel(object):
     if FLAGS.pointer_gen:
       self._enc_batch_extend_vocab = tf.placeholder(tf.int32, [hps.batch_size, None], name='enc_batch_extend_vocab')
       self._max_art_oovs = tf.placeholder(tf.int32, [], name='max_art_oovs')
-    '''
-    if FLAGS.rl_training:      
-      self._sampled_sentence_r_values = tf.placeholder(tf.float32, [hps.k, None], name='sampled_sentence_r_values')
-      self._greedy_sentence_r_values = tf.placeholder(tf.float32, [hps.k, None], name='greedy_sentence_r_values')
-    '''
     if FLAGS.ac_training: # added by yaserkl@vt.edu for the purpose of calculating rouge loss
       self._q_estimates = tf.placeholder(tf.float32, [self._hps.batch_size,self._hps.k,self._hps.max_dec_steps, None], name='q_estimates')
     if FLAGS.scheduled_sampling:
@@ -227,12 +222,23 @@ class SummarizationModel(object):
 
   def discount_rewards(self, r):
     """ take a list of size max_dec_step * (batch_size, k) and return a list of the same size """
-    discounted_r = tf.zeros_like(r)
+    discounted_r = []
     running_add = tf.constant(0, tf.float32)
     for t in reversed(range(0, len(r))):
-      running_add = running_add * self._hps.gamma + r[t]
-      discounted_r[t] = running_add
-    return discounted_r
+      running_add = running_add * self._hps.gamma + r[t] # rd_t = r_t + gamma * r_{t+1}
+      discounted_r.append(running_add)
+    discounted_r = tf.stack(discounted_r[::-1]) # (max_dec_step, batch_size, k)
+    normalized_discounted_r = tf.nn.l2_normalize(discounted_r, axis=0)
+    return tf.unstack(normalized_discounted_r) # list of max_dec_step * (batch_size, k)
+
+  def intermediate_rewards(self, r):
+    """ take a list of size max_dec_step * (batch_size, k) and return a list of the same size
+        uses the intermediate reward as proposed by: R_t = r_t - r_{t-1} """
+    intermediate_r = []
+    intermediate_r.append(r[0])
+    for t in range(1, len(r)):
+      intermediate_r.append(r[t]-r[t-1])
+    return intermediate_r # list of max_dec_step * (batch_size, k)
 
   def _add_seq2seq(self):
     """Add the whole sequence-to-sequence model to the graph."""
@@ -267,14 +273,20 @@ class SummarizationModel(object):
          self.final_dists, self.samples, self.greedy_search_samples, self.temporal_es,
          self.sampling_rewards, self.greedy_rewards) = self._add_decoder(emb_dec_inputs, embedding)
 
-      if hps.mode in ['train', 'eval']:
-        if hps.rl_training and FLAGS.use_discounted_rewards:
-          self.sampling_discounted_rewards = tf.stack(self.discount_rewards(tf.unstack(self.sampling_rewards))) # list of max_dec_steps * (batch_size, k)
-          self.greedy_discounted_rewards = tf.stack(self.discount_rewards(tf.unstack(self.greedy_rewards))) # list of max_dec_steps * (batch_size, k)
-        if hps.ac_training:
-          # Get the sampled and greedy sentence from model output
-          self.sampled_sentences = tf.transpose(tf.stack(self.samples), perm=[1,2,0]) # (batch_size, k, <=max_dec_steps) word indices
-          self.greedy_search_sentences = tf.transpose(tf.stack(self.greedy_search_samples), perm=[1,2,0]) # (batch_size, k, <=max_dec_steps) word indices
+      if FLAGS.use_discounted_rewards and hps.rl_training and hps.mode in ['train', 'eval']:
+        # Get the sampled and greedy sentence from model output
+        # self.samples: (max_dec_steps, batch_size, k)
+        self.sampling_discounted_rewards = tf.stack(self.discount_rewards(tf.unstack(self.sampling_rewards))) # list of max_dec_steps * (batch_size, k)
+        self.greedy_discounted_rewards = tf.stack(self.discount_rewards(tf.unstack(self.greedy_rewards))) # list of max_dec_steps * (batch_size, k)
+      elif FLAGS.use_intermediate_rewards and hps.rl_training and hps.mode in ['train', 'eval']:
+        # Get the sampled and greedy sentence from model output
+        # self.samples: (max_dec_steps, batch_size, k)
+        self.sampling_discounted_rewards = tf.stack(self.intermediate_rewards(tf.unstack(self.sampling_rewards))) # list of max_dec_steps * (batch_size, k)
+        self.greedy_discounted_rewards = tf.stack(self.intermediate_rewards(tf.unstack(self.greedy_rewards))) # list of max_dec_steps * (batch_size, k)
+      elif hps.ac_training and hps.mode in ['train', 'eval']:
+        # Get the sampled and greedy sentence from model output
+        self.sampled_sentences = tf.transpose(tf.stack(self.samples), perm=[1,2,0]) # (batch_size, k, <=max_dec_steps) word indices
+        self.greedy_search_sentences = tf.transpose(tf.stack(self.greedy_search_samples), perm=[1,2,0]) # (batch_size, k, <=max_dec_steps) word indices
 
     if hps.mode == "decode":
       # We run decode beam search mode one decoder step at a time

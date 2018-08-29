@@ -355,7 +355,7 @@ class SummarizationModel(object):
         self._greedy_rouges = []
         self._reward_diff = []
         for _ in range(self._hps.k):
-          if FLAGS.use_discounted_rewards:
+          if FLAGS.use_discounted_rewards or FLAGS.use_intermediate_rewards:
             self._sampled_rouges.append(self.sampling_discounted_rewards[:, :, _]) # shape (max_enc_steps, batch_size)
             self._greedy_rouges.append(self.greedy_discounted_rewards[:, :, _]) # shape (max_enc_steps, batch_size)
           else:
@@ -375,7 +375,7 @@ class SummarizationModel(object):
             loss_per_step.append(losses)
             # Equation 15 in https://arxiv.org/pdf/1705.04304.pdf
             # Equal reward for all tokens
-            if FLAGS.use_discounted_rewards:
+            if FLAGS.use_discounted_rewards or FLAGS.use_intermediate_rewards:
               rl_losses = -tf.log(gold_probs) * self._reward_diff[_k][dec_step, :]  # positive values
             else:
               rl_losses = -tf.log(gold_probs) * self._reward_diff[_k] # positive values
@@ -386,6 +386,12 @@ class SummarizationModel(object):
           tf.transpose(tf.reshape(rl_loss_per_step, [-1, self._hps.k, self._hps.batch_size]),perm=[1,0,2]))
         loss_per_step = tf.unstack(
           tf.transpose(tf.reshape(loss_per_step, [-1, self._hps.k, self._hps.batch_size]), perm=[1, 0, 2]))
+
+        if FLAGS.use_intermediate_rewards:
+          self._sampled_rouges = tf.reduce_sum(self._sampled_rouges, axis=1) # shape (k, batch_size)
+          self._greedy_rouges = tf.reduce_sum(self._greedy_rouges, axis=1) # shape (k, batch_size)
+          self._reward_diff = tf.reduce_sum(self._reward_diff, axis=1) # shape (k, batch_size)
+
         with tf.variable_scope('reinforce_loss'):
           self._rl_avg_logprobs = []
           self._rl_loss = []

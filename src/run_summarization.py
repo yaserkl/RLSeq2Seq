@@ -665,12 +665,13 @@ class Seq2Seq(object):
     if not os.path.exists(FLAGS.log_root):
       if FLAGS.mode=="train":
         os.makedirs(FLAGS.log_root)
-        fw = open('{}/config.txt'.format(FLAGS.log_root),'w')
-        for k,v in flags.items():
-          fw.write('{}\t{}\n'.format(k,v))
-        fw.close()
       else:
         raise Exception("Logdir %s doesn't exist. Run in train mode to create it." % (FLAGS.log_root))
+
+    fw = open('{}/config.txt'.format(FLAGS.log_root), 'w')
+    for k, v in flags.items():
+      fw.write('{}\t{}\n'.format(k, v))
+    fw.close()
 
     self.vocab = Vocab(FLAGS.vocab_path, FLAGS.vocab_size) # create a vocabulary
 

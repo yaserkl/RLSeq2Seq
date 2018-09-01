@@ -60,11 +60,12 @@ class BeamSearchDecoder(object):
         _ = util.load_dqn_ckpt(self._dqn_saver, self._dqn_sess)
 
     # Load an initial checkpoint to use for decoding
-    ckpt_path = util.load_ckpt(self._saver, self._sess)
+    ckpt_path = util.load_ckpt(self._saver, self._sess, FLAGS.decode_from)
 
     if FLAGS.single_pass:
       # Make a descriptive decode directory name
-      ckpt_name = "ckpt-" + ckpt_path.split('-')[-1] # this is something of the form "ckpt-123456"
+      ckpt_name = "{}-ckpt-".format(FLAGS.decode_from) + ckpt_path.split('-')[
+        -1]  # this is something of the form "ckpt-123456"
       self._decode_dir = os.path.join(FLAGS.log_root, get_decode_dir_name(ckpt_name))
     else: # Generic decode dir name
       self._decode_dir = os.path.join(FLAGS.log_root, "decode")
@@ -130,7 +131,7 @@ class BeamSearchDecoder(object):
         t1 = time.time()
         if t1-t0 > SECS_UNTIL_NEW_CKPT:
           tf.logging.info('We\'ve been decoding with same checkpoint for %i seconds. Time to load new checkpoint', t1-t0)
-          _ = util.load_ckpt(self._saver, self._sess)
+          _ = util.load_ckpt(self._saver, self._sess, FLAGS.decode_from)
           t0 = time.time()
 
   def write_for_rouge(self, reference_sents, decoded_words, ex_index):
@@ -256,7 +257,7 @@ def get_decode_dir_name(ckpt_name):
   elif "val" in FLAGS.data_path: dataset = "val"
   elif "test" in FLAGS.data_path: dataset = "test"
   else: raise ValueError("FLAGS.data_path %s should contain one of train, val or test" % (FLAGS.data_path))
-  dirname = "decode_%s_%imaxenc_%ibeam_%imindec_%imaxdec" % (dataset, FLAGS.max_enc_steps, FLAGS.beam_size, FLAGS.min_dec_steps, FLAGS.max_dec_steps)
+  dirname = "decode_%s_%s_%imaxenc_%ibeam_%imindec_%imaxdec" % (dataset, FLAGS.decode_from, FLAGS.max_enc_steps, FLAGS.beam_size, FLAGS.min_dec_steps, FLAGS.max_dec_steps)
   if ckpt_name is not None:
     dirname += "_%s" % ckpt_name
   return dirname

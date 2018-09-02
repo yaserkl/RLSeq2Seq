@@ -448,7 +448,7 @@ class Seq2Seq(object):
       if FLAGS.rl_training:
         printer_helper['sampled_r'] = np.mean(results['sampled_sentence_r_values'])
         printer_helper['greedy_r'] = np.mean(results['greedy_sentence_r_values'])
-        printer_helper['r_diff'] = printer_helper['sampled_r'] - printer_helper['greedy_r']
+        printer_helper['r_diff'] = printer_helper['greedy_r'] - printer_helper['sampled_r']
       if FLAGS.ac_training:
         printer_helper['dqn_loss'] = np.mean(self.avg_dqn_loss) if len(self.avg_dqn_loss)>0 else 0
 
@@ -617,7 +617,7 @@ class Seq2Seq(object):
         if FLAGS.rl_training:
           printer_helper['sampled_r'] = np.mean(results['sampled_sentence_r_values'])
           printer_helper['greedy_r'] = np.mean(results['greedy_sentence_r_values'])
-          printer_helper['r_diff'] = printer_helper['sampled_r'] - printer_helper['greedy_r']
+          printer_helper['r_diff'] = printer_helper['greedy_r'] - printer_helper['sampled_r']
         if FLAGS.ac_training:
           printer_helper['dqn_loss'] = np.mean(self.avg_dqn_loss) if len(self.avg_dqn_loss) > 0 else 0
 

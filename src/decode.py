@@ -25,7 +25,7 @@ import json
 import pyrouge
 import util
 import logging
-import numpy as np
+from unidecode import unidecode
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -80,7 +80,6 @@ class BeamSearchDecoder(object):
       self._rouge_dec_dir = os.path.join(self._decode_dir, "decoded")
       if not os.path.exists(self._rouge_dec_dir): os.mkdir(self._rouge_dec_dir)
 
-
   def decode(self):
     """Decode examples until data is exhausted (if FLAGS.single_pass) and return, or decode indefinitely, loading latest checkpoint at regular intervals"""
     t0 = time.time()
@@ -134,6 +133,12 @@ class BeamSearchDecoder(object):
           _ = util.load_ckpt(self._saver, self._sess, FLAGS.decode_from)
           t0 = time.time()
 
+  def remove_non_ascii(self, text):
+    try:
+      return unicode(unidecode(unicode(text, encoding="utf-8")))
+    except:
+      return str(unidecode(text))
+
   def write_for_rouge(self, reference_sents, decoded_words, ex_index):
     """Write output to file in correct format for eval with pyrouge. This is called in single_pass mode.
 
@@ -155,8 +160,8 @@ class BeamSearchDecoder(object):
 
     # pyrouge calls a perl script that puts the data into HTML files.
     # Therefore we need to make our output HTML safe.
-    decoded_sents = [make_html_safe(w) for w in decoded_sents]
-    reference_sents = [make_html_safe(w) for w in reference_sents]
+    decoded_sents = [self.remove_non_ascii(make_html_safe(w)) for w in decoded_sents]
+    reference_sents = [self.remove_non_ascii(make_html_safe(w)) for w in reference_sents]
 
     # Write to file
     ref_file = os.path.join(self._rouge_ref_dir, "%06d_reference.txt" % ex_index)
@@ -170,7 +175,6 @@ class BeamSearchDecoder(object):
         f.write(sent) if idx==len(decoded_sents)-1 else f.write(sent+"\n")
 
     tf.logging.info("Wrote example %i to file" % ex_index)
-
 
   def write_for_attnvis(self, article, abstract, decoded_words, attn_dists, p_gens):
     """Write some data to json file, which can be read into the in-browser attention visualizer tool:

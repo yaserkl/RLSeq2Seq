@@ -10,6 +10,8 @@ from glob import glob
 from unidecode import unidecode
 from multiprocessing import Pool, cpu_counts
 import os, sys
+from newspaper import Article # require python 3 for this
+
 try:
     reload(sys)
     sys.setdefaultencoding('utf-8') 
@@ -29,7 +31,7 @@ def remove_non_ascii(text):
     try:
         return unidecode(unicode(text, encoding = "utf-8"))
     except:
-        return unidecode(str(text))
+        return unidecode(text)
 
 def run(param):
     (article_dir, title_dir, html_path) = param

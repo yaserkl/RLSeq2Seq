@@ -1,0 +1,41 @@
+************
+RL Training
+************
+
+
+Train
+======================================================================
+
+ROUGE-1:
+rouge_1_f_score: 0.3656 with confidence interval (0.3634, 0.3680)
+rouge_1_recall: 0.3795 with confidence interval (0.3770, 0.3822)
+rouge_1_precision: 0.3758 with confidence interval (0.3730, 0.3786)
+
+ROUGE-2:
+rouge_2_f_score: 0.1584 with confidence interval (0.1561, 0.1607)
+rouge_2_recall: 0.1639 with confidence interval (0.1615, 0.1662)
+rouge_2_precision: 0.1639 with confidence interval (0.1613, 0.1664)
+
+ROUGE-l:
+rouge_l_f_score: 0.3340 with confidence interval (0.3318, 0.3363)
+rouge_l_recall: 0.3466 with confidence interval (0.3442, 0.3492)
+rouge_l_precision: 0.3435 with confidence interval (0.3408, 0.3463)
+
+
+Eval
+======================================================================
+
+ROUGE-1:
+rouge_1_f_score: 0.3656 with confidence interval (0.3634, 0.3680)
+rouge_1_recall: 0.3795 with confidence interval (0.3770, 0.3822)
+rouge_1_precision: 0.3758 with confidence interval (0.3730, 0.3786)
+
+ROUGE-2:
+rouge_2_f_score: 0.1584 with confidence interval (0.1561, 0.1607)
+rouge_2_recall: 0.1639 with confidence interval (0.1615, 0.1662)
+rouge_2_precision: 0.1639 with confidence interval (0.1613, 0.1664)
+
+ROUGE-l:
+rouge_l_f_score: 0.3340 with confidence interval (0.3318, 0.3363)
+rouge_l_recall: 0.3466 with confidence interval (0.3442, 0.3492)
+rouge_l_precision: 0.3435 with confidence interval (0.3408, 0.3463)

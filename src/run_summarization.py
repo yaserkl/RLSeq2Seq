@@ -79,6 +79,8 @@ tf.app.flags.DEFINE_integer('gpu_num', 0, 'which gpu to use to train the model')
 
 # Pointer-generator or baseline model
 tf.app.flags.DEFINE_boolean('pointer_gen', True, 'If True, use pointer-generator model. If False, use baseline model.')
+tf.app.flags.DEFINE_boolean('avoid_trigrams', True, 'Avoids trigram during decoding')
+tf.app.flags.DEFINE_boolean('share_decoder_weights', False, 'Share output matrix projection with word embedding') # Eq 13. in https://arxiv.org/pdf/1705.04304.pdf
 
 # Pointer-generator with Self-Critic policy gradient: https://arxiv.org/pdf/1705.04304.pdf
 tf.app.flags.DEFINE_boolean('rl_training', False, 'Use policy-gradient training by collecting rewards at the end of sequence.')
@@ -200,7 +202,7 @@ class Seq2Seq(object):
     for ef in event_files:
       try:
         for e in tf.train.summary_iterator(ef):
-          for v in e.summary:
+          for v in e.summary.value:
             step = e.step
             if 'running_avg_loss/decay' in v.tag:
               running_avg_loss = v.simple_value
@@ -607,9 +609,8 @@ class Seq2Seq(object):
         if FLAGS.coverage:
           printer_helper['coverage_loss'] = results['coverage_loss']
           if FLAGS.rl_training or FLAGS.ac_training:
-            loss = printer_helper['rl_cov_total_loss']= results['reinforce_cov_total_loss']
-          else:
-            loss = printer_helper['pointer_cov_total_loss'] = results['pointer_cov_total_loss']
+            printer_helper['rl_cov_total_loss']= results['reinforce_cov_total_loss']
+          loss = printer_helper['pointer_cov_total_loss'] = results['pointer_cov_total_loss']
         if FLAGS.rl_training or FLAGS.ac_training:
           printer_helper['shared_loss'] = results['shared_loss']
           printer_helper['rl_loss'] = results['rl_loss']

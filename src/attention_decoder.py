@@ -373,12 +373,17 @@ def attention_decoder(_hps,
 
       # Add the output projection to obtain the vocabulary distribution
       with tf.variable_scope('output_projection'):
+        if i > 0:
+          tf.get_variable_scope().reuse_variables()
         trunc_norm_init = tf.truncated_normal_initializer(stddev=_hps.trunc_norm_init_std)
         w_out = tf.get_variable('w', [_hps.dec_hidden_dim, v_size], dtype=tf.float32, initializer=trunc_norm_init)
         #w_t_out = tf.transpose(w)
         v_out = tf.get_variable('v', [v_size], dtype=tf.float32, initializer=trunc_norm_init)
         if i > 0:
           tf.get_variable_scope().reuse_variables()
+        if FLAGS.share_decoder_weights: # Eq. 13 in https://arxiv.org/pdf/1705.04304.pdf
+          w_out = tf.transpose(
+            math_ops.tanh(linear([embedding] + [tf.transpose(w_out)], _hps.dec_hidden_dim, bias=False)))
         score = tf.nn.xw_plus_b(output, w_out, v_out)
         if _hps.scheduled_sampling and not _hps.greedy_scheduled_sampling:
           # Gumbel reparametrization trick: https://arxiv.org/abs/1704.06970

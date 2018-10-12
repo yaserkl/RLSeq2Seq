@@ -116,8 +116,8 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
   hyps = [Hypothesis(tokens=[vocab.word2id(data.START_DECODING)],
                      log_probs=[0.0],
                      state=dec_in_state,
-                     decoder_output = np.zeros([FLAGS.dec_hidden_dim]),
-                     encoder_mask = np.zeros([batch.enc_batch.shape[1]]),
+                     decoder_output = [np.zeros([FLAGS.dec_hidden_dim])],
+                     encoder_mask = [np.zeros([batch.enc_batch.shape[1]])],
                      attn_dists=[],
                      p_gens=[],
                      coverage=np.zeros([batch.enc_batch.shape[1]]) # zero vector of length attention_length
@@ -130,9 +130,9 @@ def run_beam_search(sess, model, vocab, batch, dqn = None, dqn_sess = None, dqn_
     latest_tokens = [t if t in range(vocab.size()) else vocab.word2id(data.UNKNOWN_TOKEN) for t in latest_tokens] # change any in-article temporary OOV ids to [UNK] id, so that we can lookup word embeddings
     states = [h.state for h in hyps] # list of current decoder states of the hypotheses
     prev_coverage = [h.coverage for h in hyps] # list of coverage vectors (or None)
-    decoder_outputs = [h.decoder_output for h in hyps]
-    encoder_es = [h.encoder_mask for h in hyps]
-
+    decoder_outputs = np.array([h.decoder_output for h in hyps]).swapaxes(0, 1) # shape (?, batch_size, dec_hidden_dim)
+    encoder_es = np.array([h.encoder_mask for h in hyps]).swapaxes(0, 1)  # shape (?, batch_size, enc_hidden_dim)
+    print(decoder_outputs.shape, encoder_es.shape)
     # Run one step of the decoder to get the new info
     (topk_ids, topk_log_probs, new_states, attn_dists, final_dists, p_gens, new_coverage, decoder_output, encoder_e) = model.decode_onestep(sess=sess,
                         batch=batch,

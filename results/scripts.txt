@@ -1,0 +1,62 @@
+intradecoder: false
+temporal attention: false
+pretraining w. MLE: true
+batch size: 32
+train size: 287226
+pretrain: 15 epochs, 134637 iterations
+rl train: 14 epochs, 260298 iterations
+coverage: 3 epochs,  287226 iterations
+----------------------------------------
+
+=========================
+pretraining for 15 epochs
+=========================
+
+python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining --batch_size=32 --max_iter=134637 --example_queue_threads=1 --batch_queue_threads=1
+
+python src/run_summarization.py --mode=eval --data_path=$HOME/data/cnn_dm/finished_files/chunked/val_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining --batch_size=8 --example_queue_threads=1 --batch_queue_threads=1
+
+========
+decoding
+========
+
+python src/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining  --rl_training=False --single_pass=1 --beam_size=4 --example_queue_threads=1 --batch_queue_threads=1 decode_from=train
+
+python src/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining  --rl_training=False --single_pass=1 --beam_size=4 --example_queue_threads=1 --batch_queue_threads=1 decode_from=eval
+
+=========================
+RL training for 14 epochs
+=========================
+
+python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining --batch_size=32 --max_iter=260298 --rl_training=True  --eta=3.71368423007202E-06 --convert_to_reinforce_model=True --example_queue_threads=1 --batch_queue_threads=1 --scheduled_sampling=True --sampling_probability=3.71368423007202E-06
+
+python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining --batch_size=32 --max_iter=260298 --rl_training=True --eta=3.71368423007202E-06 --example_queue_threads=1 --batch_queue_threads=1 --scheduled_sampling=True --sampling_probability=3.71368423007202E-06 --lr=0.001
+
+python src/run_summarization.py --mode=eval --data_path=$HOME/data/cnn_dm/finished_files/chunked/val_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining --batch_size=8 --rl_training=True --eta=3.71368423007202E-06 --example_queue_threads=1 --batch_queue_threads=1 --scheduled_sampling=True --sampling_probability=3.71368423007202E-06
+
+========
+decoding
+========
+
+python src/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining  --rl_training=False --single_pass=1 --beam_size=4 --example_queue_threads=1 --batch_queue_threads=1 decode_from=train
+
+python src/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining  --rl_training=False --single_pass=1 --beam_size=4 --example_queue_threads=1 --batch_queue_threads=1 decode_from=eval
+
+=====================
+Coverage for 3 epochs
+=====================
+
+python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining --batch_size=32 --max_iter=287226  --rl_training=True --eta=3.48158E-06 --coverage=True --convert_to_coverage_model=True --example_queue_threads=1 --batch_queue_threads=1 --scheduled_sampling=True --sampling_probability=3.48158E-06
+
+python src/run_summarization.py --mode=train --data_path=$HOME/data/cnn_dm/finished_files/chunked/train_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining --batch_size=32 --max_iter=287226  --rl_training=True --eta=3.48158E-06 --coverage=True --example_queue_threads=1 --batch_queue_threads=1 --scheduled_sampling=True --sampling_probability=3.48158E-06 --lr=0.0001
+
+python src/run_summarization.py --mode=eval --data_path=$HOME/data/cnn_dm/finished_files/chunked/val_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining --batch_size=8 --rl_training=True --coverage=True --eta=3.48158E-06 --example_queue_threads=1 --batch_queue_threads=1 --scheduled_sampling=True --sampling_probability=3.48158E-06
+
+========
+decoding
+========
+
+python src/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining  --rl_training=False --single_pass=1 --beam_size=4 --example_queue_threads=1 --batch_queue_threads=1 decode_from=train --coverage=True
+
+python src/run_summarization.py --mode=decode --data_path=$HOME/data/cnn_dm/finished_files/chunked/test_* --vocab_path=$HOME/data/cnn_dm/finished_files/vocab --log_root=$HOME/working_dir/cnn_dm/RLSeq2Seq/ --exp_name=nointradecoder-notemporal-withpretraining  --rl_training=False --single_pass=1 --beam_size=4 --example_queue_threads=1 --batch_queue_threads=1 decode_from=eval --coverage=True
+

@@ -1,4 +1,4 @@
-tensorflow-gpu==1.10
+tensorflow-gpu==2.9.3
 PyYAML
 spacy
 scikit-learn
